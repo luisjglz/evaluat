@@ -1,0 +1,84 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabEQuality</title>
+    <link rel="shortcut icon" type="image/png" href="{% static '/images/favicon.ico' %}"/>
+
+    {% load django_bootstrap5 %}
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+    {% block customcss %}{% endblock %}
+
+    <!-- App css -->
+    <link href="{% static 'css/app.css' %}" rel="stylesheet" type="text/css">
+
+    <!-- Icons css -->
+    <link href="{% static 'css/icons.min.css' %}" rel="stylesheet" type="text/css">
+
+    <!-- nice-select2 css -->
+    <link href="{% static 'css/nice-select2.css' %}" rel="stylesheet" type="text/css">
+
+    <!-- Theme Config Js -->
+    <script src="{% static 'js/config.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/custom-styles.css' %}">
+
+    
+    
+</head>
+
+<body>
+
+    <div class="bg-gradient-to-r from-gray-400 to-gray-800 dark:from-gray-700 dark:via-gray-900 dark:to-black">
+        <div class="h-screen w-screen flex justify-center items-center">
+
+            <div class="2xl:w-1/4 lg:w-1/3 md:w-1/2 w-full">
+                <div class="card overflow-hidden sm:rounded-md rounded-none">
+                    <div class="p-6">
+                        <div class="flex justify-center">
+                            <a href="#." class="block mb-8">
+                                <!-- <img class="h-20 block dark:hidden" src="{% static 'images/logo-laboratorio-biolab.jpg' %}" alt=""> -->
+                                 <h2>UNILAB</h2>
+                            </a>
+                        </div>
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <div class="btn-close " data-bs-dismiss="alert" aria-label="Close"></div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        <form method="post" action="/">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ next }}">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-600 dark:text-gray-200 mb-2" for="usuario_input">Usuario</label>
+                                <input id="usuario_input" class="form-input" type="text" placeholder="Usuario" name="usuario">
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-600 dark:text-gray-200 mb-2" for="loggingPassword">Password</label>
+                                <input id="loggingPassword" class="form-input" type="password" placeholder="Ingrese su contraseña" name="password">
+                            </div>
+
+                            <div class="text-center text-lg-start mt-4 pt-2">
+                                <input type="submit" class="btn w-full text-white bg-primary" value="Entrar">
+                            </div>
+
+                        </form>
+                        
+                    </div>
+                </div>
+                <p class="text-xs mt-2 text-end">Version: 1.0.1</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
