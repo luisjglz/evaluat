@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabEQuality</title>
+    <link rel="shortcut icon" type="image/png" href="{% static '/images/favicon.ico' %}"/>
+
+    
+    
+    {% load django_bootstrap5 %}
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+    {% block customcss %}{% endblock %}
+    
+    <!-- App css -->
+    <link href="{% static 'css/app.css' %}" rel="stylesheet" type="text/css">
+
+    <!-- Icons css -->
+    <link href="{% static 'css/icons.min.css' %}" rel="stylesheet" type="text/css">
+
+    <!-- nice-select2 css -->
+    <link href="{% static 'css/nice-select2.css' %}" rel="stylesheet" type="text/css">
+
+    <!-- Theme Config Js -->
+    <script src="{% static 'js/config.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/custom-styles.css' %}">
+
+
+</head>
+
+<body>
+    <div class="flex wrapper">
+        {% include 'sidebar.html' %}
+
+        <div class="page-content">
+
+            <!-- Topbar Start -->
+            {% include 'topbar.html' %}
+            <!-- Topbar End -->
+
+            <!-- Topbar Search Modal -->
+            {% include 'topbarsearch.html' %}
+            <!-- Topbar Search Modal End -->
+
+            <!-- Main -->
+            <main class="flex-grow">
+                {% block content %}{% endblock %}
+            </main>
+            <!-- Main End -->
+
+            <!-- Footer Start -->
+            {% include 'footer.html' %}
+            <!-- Footer End -->
+
+        </div>
+
+
+    </div>
+
+    <!-- Back to Top Button -->
+    <button data-toggle="back-to-top" class="fixed hidden h-10 w-10 items-center justify-center rounded-full z-10 bottom-20 end-14 p-2.5 bg-primary cursor-pointer shadow-lg text-white">
+        <i class="mgc_arrow_up_line text-lg"></i>
+    </button>
+
+    <!-- Plugin Js -->
+    <script src="{% static 'libs/simplebar/simplebar.min.js' %}"></script>
+    <script src="{% static 'libs/feather-icons/feather.min.js' %}"></script>
+    <script src="{% static 'libs/@frostui/tailwindcss/frostui.js' %}"></script>
+    <script src="{% static 'libs/nice-select2/js/nice-select2.js' %}"></script>
+
+    <!-- App Js -->
+    <script src="{% static 'js/app.js' %}"></script>
+
+    <!-- Apexcharts js -->
+    <script src="{% static 'libs/apexcharts/apexcharts.min.js' %}"></script>
+
+    <!-- Dashboard Project Page js -->
+    <!-- <script src="{% static 'js/pages/dashboard.js' %}"></script> -->
+
+    {% block customscripts %}{% endblock %}
+
+
+
+</body>
+
+</html>

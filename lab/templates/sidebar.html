@@ -1,0 +1,146 @@
+{% load static %}
+
+
+<!-- Sidenav Menu -->
+<div class="app-menu">
+
+    <!-- Sidenav Brand Logo -->
+    <a href="{% url 'labmainview' %}" class="logo-box">
+        <!-- Light Brand Logo -->
+        <div class="logo-light">
+            <!-- <img src="{% static 'images/logo-laboratorio-biolab.jpg' %}" class="logo-lg h-6" alt="Light logo"> -->
+            <!-- <img src="{% static 'images/logo-laboratorio-biolab.jpg' %}" class="logo-sm" alt="Small logo"> -->
+             <h2>EvaluaT</h2>
+        </div>
+
+        <!-- Dark Brand Logo -->
+        <div class="logo-dark">
+            <!-- <img src="{% static 'images/logo-laboratorio-biolab.jpg' %}" class="logo-lg h-6" alt="Dark logo"> -->
+            <!-- <img src="{% static 'images/logo-laboratorio-biolab.jpg' %}" class="logo-sm" alt="Small logo"> -->
+             <h2>EvaluaT</h2>
+        </div>
+    </a>
+
+    <!-- Sidenav Menu Toggle Button -->
+    <button id="button-hover-toggle" class="absolute top-5 end-2 rounded-full p-1.5">
+        <span class="sr-only">Menu Toggle Button</span>
+        <i class="mgc_round_line text-xl"></i>
+    </button>
+
+    <!--- Menu -->
+    <div class="srcollbar" data-simplebar>
+        <ul class="menu" data-fc-type="accordion">
+            <li class="menu-title">Menu</li>
+
+            <li class="menu-item">
+                <a href="{% url 'labmainview' %}" class="menu-link">
+                    <span class="menu-icon"><i class="mgc_home_3_line"></i></span>
+                    <span class="menu-text"> Dashboard </span>
+                </a>
+            </li>
+
+            <li class="menu-title">Pacientes</li>
+            {% if user.is_staff %}
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_user_2_line"></i></span>
+                    <span class="menu-text"> Nuevo paciente </span>
+                </a>
+            </li>
+            {% endif %}
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_group_line"></i></span>
+                    <span class="menu-text"> Ver pacientes </span>
+                </a>
+            </li>
+
+            <li class="menu-title">Órdenes</li>
+            {% if user.is_staff %}
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_file_new_line"></i></span>
+                    <span class="menu-text"> Nueva orden </span>
+                </a>
+            </li>
+            {% endif %}
+            <li class="menu-item">
+                <a href=""."" class="menu-link">
+                    <span class="menu-icon"><i class="mgc_list_check_3_line"></i></span>
+                    <span class="menu-text"> Listado </span>
+                </a>
+            </li>
+
+            <li class="menu-title">Estudios</li>
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_folder_star_line"></i></span>
+                    <span class="menu-text"> Catálogo de estudios </span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_news_line"></i></span>
+                    <span class="menu-text"> Nuevo estudio </span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_folders_line"></i></span>
+                    <span class="menu-text"> Catálogo de grupos </span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_version_line"></i></span>
+                    <span class="menu-text"> Nuevo grupo </span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_folder_more_line"></i></span>
+                    <span class="menu-text"> Áreas </span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_flask_2_line"></i></span>
+                    <span class="menu-text"> Tipos de muestras </span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_science_line"></i></span>
+                    <span class="menu-text"> Metodologías </span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_glass_cup_line"></i></span>
+                    <span class="menu-text"> Contenedores </span>
+                </a>
+            </li>
+            
+            {% if user.is_staff %}
+            <li class="menu-title">Usuarios</li>
+
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_badge_line"></i></span>
+                    <span class="menu-text"> Ver usuarios </span>
+                </a>
+            </li>
+            {% if user.is_superuser %}
+            <li class="menu-item">
+                <a href="#." class="menu-link">
+                    <span class="menu-icon"><i class="mgc_user_add_fill"></i></span>
+                    <span class="menu-text"> Añadir usuario </span>
+                </a>
+            </li>
+            {% endif %}
+            {% endif %}
+
+        </ul>
+
+    </div>
+</div>

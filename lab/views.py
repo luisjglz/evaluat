@@ -40,12 +40,27 @@ def homepage(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            next_url = request.POST.get('next') or 'mainadminview'
+            next_url = request.POST.get('next') or 'labmainview'
             return redirect(next_url)
         else:
             messages.error(request, ("Login o password incorrecto"))
             return redirect('homepage')
-    #return render(request, 'homepage.html', {'next': request.GET.get('next', '')})
-    #return HttpResponse("Hello, world. You're at the polls index.")
-    #return redirect('homepage')
     return render(request, 'homepage.html', {'next': request.GET.get('next', '')})
+
+def logout_user(request):
+    logout(request)
+    messages.success(request, ("Logged out"))
+    return redirect('homepage')
+
+class LabMainView(LoginRequiredMixin, View):
+    template_name = 'labmain.html'
+    login_url = 'homepage'
+
+    def get(self, req):
+
+        # Add the calculated numbers to the context
+        context = {
+            
+        }
+
+        return render(req, self.template_name, context)
