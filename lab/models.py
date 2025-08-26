@@ -1,14 +1,21 @@
 from django.db import models
+from django.conf import settings
 
 class Laboratorio(models.Model):
     nombre = models.CharField(max_length=255)
     clave = models.CharField(max_length=255)
-    contacto = models.CharField(max_length=255)
-    correo = models.EmailField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.nombre
+
+
+class user_laboratorio(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='laboratorios')
+    laboratorio = models.ForeignKey(Laboratorio, on_delete=models.CASCADE, related_name='usuarios')
+
+    def __str__(self):
+        return f"{self.user} - {self.laboratorio}"
 
 class Programa(models.Model):
     nombre = models.CharField(max_length=255)
