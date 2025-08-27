@@ -47,6 +47,7 @@ class Instrumentos(models.Model):
     nombre = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True)
     default = models.BooleanField(default=False)
+    defaultEnPruebas = models.ManyToManyField('Prueba', related_name='instrumentos', blank=True)
 
     def __str__(self):
         return self.nombre
@@ -55,6 +56,7 @@ class MetodosAnaliticos(models.Model):
     nombre = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True)
     default = models.BooleanField(default=False)
+    defaultEnPruebas = models.ManyToManyField('Prueba', related_name='modelos_analíticos', blank=True)
 
     def __str__(self):
         return self.nombre
@@ -63,6 +65,7 @@ class Reactivos(models.Model):
     nombre = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True)
     default = models.BooleanField(default=False)
+    defaultEnPruebas = models.ManyToManyField('Prueba', related_name='reactivos', blank=True)
 
     def __str__(self):
         return self.nombre
@@ -70,7 +73,7 @@ class Reactivos(models.Model):
 class UnidadesDeMedida(models.Model):
     nombre = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True)
-    default = models.BooleanField(default=False)
+    defaultEnPruebas = models.ManyToManyField('Prueba', related_name='unidades_de_medida', blank=True)
 
     def __str__(self):
         return self.nombre
