@@ -23,7 +23,7 @@ class programa_laboratorio(models.Model):
     programa_id = models.ForeignKey("Programa", on_delete=models.PROTECT, related_name='laboratorios')
 
     def __str__(self):
-        return f"{self.laboratorio} - {self.programa}"
+        return f"{self.laboratorio_id} - {self.programa_id}"
 
 class Programa(models.Model):
     nombre = models.CharField(max_length=255)
@@ -81,7 +81,7 @@ class PropiedadARevisar(models.Model):
     status = models.IntegerField()  # 0: pendiente, 1: aprobado, 2: rechazado
 
     def __str__(self):
-        return self.nombre
+        return f"{self.tipoElemento} - {self.valor}"
     
 class Dato(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='datos')
@@ -90,7 +90,7 @@ class Dato(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.prueba} - {self.valor} - {self.fecha}"
+        return f"{self.prueba_id} - {self.valor} - {self.fecha}"
 
 class KitDeReactivos(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='kits_de_reactivos')
@@ -99,4 +99,4 @@ class KitDeReactivos(models.Model):
     observaciones = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return self.nombre
+        return f"Kit de Reactivos en {self.laboratorio_id.nombre} recibido el {self.fechaDeRecepcion.strftime('%Y-%m-%d %H:%M:%S')}"
