@@ -15,7 +15,7 @@ class user_laboratorio(models.Model):
     laboratorio = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='usuarios')
 
     def __str__(self):
-        return f"{self.user} - {self.laboratorio}"
+        return f"{self.user_id} - {self.laboratorio}"
     
 # New model to link Laboratorio and Programa
 class programa_laboratorio(models.Model):
