@@ -103,7 +103,7 @@ class LaboratorioPruebaConfig(models.Model):
     unidad_de_medida_id = models.ForeignKey(UnidadDeMedida, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_pruebas_unidad_de_medida_id', null=True, blank=True)
 
     def __str__(self):
-        return f"{self.laboratorio_id} / {self.prueba_id}"
+        return f"{self.laboratorio_id} - {self.prueba_id}"
     
     class Meta:
         constraints = [
