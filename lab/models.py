@@ -10,12 +10,15 @@ class Laboratorio(models.Model):
         return self.nombre
 
 
-class user_laboratorio(models.Model):
+class UserLaboratorio(models.Model):
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='laboratorios')
     laboratorio = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='usuarios')
 
     def __str__(self):
         return f"{self.user_id} - {self.laboratorio}"
+    
+    class Meta:
+        verbose_name_plural = "UserLaboratorio"
     
 class Programa(models.Model):
     nombre = models.CharField(max_length=255)
@@ -24,12 +27,15 @@ class Programa(models.Model):
     def __str__(self):
         return self.nombre
 
-class programa_laboratorio(models.Model):
+class ProgramaLaboratorio(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='programas')
     programa_id = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='laboratorios')
 
     def __str__(self):
         return f"{self.laboratorio_id} - {self.programa_id}"
+    
+    class Meta:
+        verbose_name_plural = "ProgramaLaboratorio"
     
 class Instrumento(models.Model):
     nombre = models.CharField(max_length=255)
@@ -44,6 +50,9 @@ class MetodoAnalitico(models.Model):
 
     def __str__(self):
         return self.nombre
+    class Meta:
+        verbose_name_plural = "MetodoAnalitico"
+
 
 class Reactivo(models.Model):
     nombre = models.CharField(max_length=255)
@@ -58,6 +67,9 @@ class UnidadDeMedida(models.Model):
 
     def __str__(self):
         return self.nombre
+    
+    class Meta:
+        verbose_name_plural = "UnidadDeMedida"
 
 class PropiedadARevisar(models.Model):
     tipoElemento = models.CharField(max_length=255)
@@ -67,6 +79,9 @@ class PropiedadARevisar(models.Model):
 
     def __str__(self):
         return f"{self.tipoElemento} - {self.valor}"
+    
+    class Meta:
+        verbose_name_plural = "PropiedadesARevisar"
 
 class Prueba(models.Model):
     programa_id = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='pruebas')
@@ -79,7 +94,7 @@ class Prueba(models.Model):
     def __str__(self):
         return self.nombre
     
-class laboratorio_prueba_config(models.Model):
+class LaboratorioPruebaConfig(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='laboratorios')
     prueba_id = models.ForeignKey(Prueba, on_delete=models.PROTECT, related_name='pruebas')
     instrumento_id = models.ForeignKey(Instrumento, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_instrumento_id', null=True, blank=True)
@@ -87,8 +102,15 @@ class laboratorio_prueba_config(models.Model):
     reactivo_id = models.ForeignKey(Reactivo, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_pruebas_reactivo_id', null=True, blank=True)
     unidad_de_medida_id = models.ForeignKey(UnidadDeMedida, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_pruebas_unidad_de_medida_id', null=True, blank=True)
 
-def __str__(self):
-    return self.nombre
+    def __str__(self):
+        return f"{self.laboratorio_id} / {self.prueba_id}"
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['laboratorio_id', 'prueba_id'], name='uq_laboratorio_prueba')
+        ]
+        verbose_name_plural = "LaboratorioPruebaConfig"
+    
 
 class Dato(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='datos')
@@ -107,3 +129,6 @@ class KitDeReactivos(models.Model):
 
     def __str__(self):
         return f"Kit de Reactivos en {self.laboratorio_id.nombre} recibido el {self.fechaDeRecepcion.strftime('%Y-%m-%d %H:%M:%S')}"
+    
+    class Meta:
+        verbose_name_plural = "KitDeReactivos"
