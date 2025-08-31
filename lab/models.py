@@ -17,34 +17,19 @@ class user_laboratorio(models.Model):
     def __str__(self):
         return f"{self.user_id} - {self.laboratorio}"
     
-# New model to link Laboratorio and Programa
-class programa_laboratorio(models.Model):
-    laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='programas')
-    programa_id = models.ForeignKey("Programa", on_delete=models.PROTECT, related_name='laboratorios')
-
-    def __str__(self):
-        return f"{self.laboratorio_id} - {self.programa_id}"
-
 class Programa(models.Model):
     nombre = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True)
     
     def __str__(self):
         return self.nombre
-    
-class Prueba(models.Model):
-    programa_id = models.ForeignKey("Programa", on_delete=models.PROTECT, related_name='pruebas')
-    nombre = models.CharField(max_length=255)
-    # metodo_analitico = models.ForeignKey(MetodoAnalitico, on_delete=models.PROTECT, related_name='pruebas')
-    # instrumento = models.ForeignKey(Instrumento, on_delete=models.PROTECT, related_name='pruebas')
-    # reactivo = models.ForeignKey(Reactivo, on_delete=models.PROTECT, related_name='pruebas')
-    instrumento_seleccionado_id = models.ForeignKey('Instrumento', on_delete=models.PROTECT, related_name='pruebas_instrumento_seleccionado', null=True, blank=True)
-    metodo_analitico_seleccionado_id = models.ForeignKey('MetodoAnalitico', on_delete=models.PROTECT, related_name='pruebas_metodo_analitico_seleccionado', null=True, blank=True)
-    reactivo_seleccionado_id = models.ForeignKey('Reactivo', on_delete=models.PROTECT, related_name='pruebas_reactivo_seleccionado', null=True, blank=True)
-    unidad_de_medida_seleccionado_id = models.ForeignKey('UnidadDeMedida', on_delete=models.PROTECT, related_name='pruebas_unidad_de_medida_seleccionado', null=True, blank=True)
+
+class programa_laboratorio(models.Model):
+    laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='programas')
+    programa_id = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='laboratorios')
 
     def __str__(self):
-        return self.nombre
+        return f"{self.laboratorio_id} - {self.programa_id}"
     
 class Instrumento(models.Model):
     nombre = models.CharField(max_length=255)
@@ -82,7 +67,29 @@ class PropiedadARevisar(models.Model):
 
     def __str__(self):
         return f"{self.tipoElemento} - {self.valor}"
+
+class Prueba(models.Model):
+    programa_id = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='pruebas')
+    nombre = models.CharField(max_length=255)
+    instrumento_seleccionado_id = models.ForeignKey(Instrumento, on_delete=models.PROTECT, related_name='pruebas_instrumento_seleccionado_id', null=True, blank=True)
+    metodo_analitico_seleccionado_id = models.ForeignKey(MetodoAnalitico, on_delete=models.PROTECT, related_name='pruebas_metodo_analitico_seleccionado_id', null=True, blank=True)
+    reactivo_seleccionado_id = models.ForeignKey(Reactivo, on_delete=models.PROTECT, related_name='pruebas_reactivo_seleccionado_id', null=True, blank=True)
+    unidad_de_medida_seleccionado_id = models.ForeignKey(UnidadDeMedida, on_delete=models.PROTECT, related_name='pruebas_unidad_de_medida_seleccionado_id', null=True, blank=True)
+
+    def __str__(self):
+        return self.nombre
     
+class laboratorio_prueba_config(models.Model):
+    laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='laboratorios')
+    prueba_id = models.ForeignKey(Prueba, on_delete=models.PROTECT, related_name='pruebas')
+    instrumento_id = models.ForeignKey(Instrumento, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_instrumento_id', null=True, blank=True)
+    metodo_analitico_id = models.ForeignKey(MetodoAnalitico, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_metodo_analitico_id', null=True, blank=True)
+    reactivo_id = models.ForeignKey(Reactivo, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_pruebas_reactivo_id', null=True, blank=True)
+    unidad_de_medida_id = models.ForeignKey(UnidadDeMedida, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_pruebas_unidad_de_medida_id', null=True, blank=True)
+
+def __str__(self):
+    return self.nombre
+
 class Dato(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='datos')
     prueba_id = models.ForeignKey(Prueba, on_delete=models.PROTECT, related_name='datos')
