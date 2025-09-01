@@ -4,9 +4,7 @@
   <div class="row g-3">
     {% for prueba in pending_pruebas %}
     <div class="col-auto">
-      <form
-        method="post"
-        class="card p-2 mb-2 shadow-sm bg-light dark:bg-dark border-0"
+      <form method="post" class="card p-2 mb-2 shadow-sm bg-light dark:bg-dark border-0"
         style="min-width: 320px; max-width: 400px">
         {% csrf_token %}
         <input type="hidden" name="prueba_id" value="{{ prueba.id }}" />
@@ -16,13 +14,8 @@
         </div>
         <!-- Botón de colapso fuera del d-flex -->
         <div class="text-end mb-2">
-          <button
-            class="btn btn-link btn-sm p-0 toggle-collapse"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#pending-{{ prueba.id }}"
-            aria-expanded="false"
-            aria-controls="pending-{{ prueba.id }}">
+          <button class="btn btn-link btn-sm p-0 toggle-collapse" type="button" data-bs-toggle="collapse"
+            data-bs-target="#pending-{{ prueba.id }}" aria-expanded="false" aria-controls="pending-{{ prueba.id }}">
             <i class="bi bi-chevron-down" id="icon-pending-{{ prueba.id }}"></i>
           </button>
         </div>
@@ -66,7 +59,7 @@
             </div>
           </div>
           <div class="text-end">
-            <button type="submit" name="accion" value="aceptar" class="btn btn-success btn-sm">
+            <button type="submit" name="accion" value="aceptar" class="btn btn-sm">
               Aceptar
             </button>
             <button type="submit" name="accion" value="proponer" class="btn btn-warning btn-sm">
@@ -85,24 +78,15 @@
   <div class="row g-3">
     {% for config in accepted_configs %}
     <div class="col-auto">
-      <div
-        class="card p-2 mb-2 shadow-sm bg-success bg-opacity-10 border-0"
-        style="min-width: 320px; max-width: 400px">
+      <div class="card p-2 mb-2 shadow-sm bg-success bg-opacity-10 border-0" style="min-width: 320px; max-width: 400px">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <strong class="text-primary-emphasis dark:text-light"
-            >{{ config.prueba_id.nombre }}</strong
-          >
+          <strong class="text-primary-emphasis dark:text-light">{{ config.prueba_id.nombre }}</strong>
           <span class="badge bg-success">Aceptada</span>
         </div>
         <!-- Botón de colapso fuera del d-flex -->
         <div class="text-end mb-2">
-          <button
-            class="btn btn-link btn-sm p-0 toggle-collapse"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#accepted-{{ config.id }}"
-            aria-expanded="false"
-            aria-controls="accepted-{{ config.id }}">
+          <button class="btn btn-link btn-sm p-0 toggle-collapse" type="button" data-bs-toggle="collapse"
+            data-bs-target="#accepted-{{ config.id }}" aria-expanded="false" aria-controls="accepted-{{ config.id }}">
             <i class="bi bi-chevron-down" id="icon-accepted-{{ config.id }}"></i>
           </button>
         </div>
@@ -139,9 +123,7 @@
   </div>
 </div>
 <!-- Bootstrap Icons CDN (solo si no lo tienes ya en tu base.html) -->
-<link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.min.css" />
 <script>
   // Cambia el ícono de flecha según el estado del collapse
   document.addEventListener("DOMContentLoaded", function () {

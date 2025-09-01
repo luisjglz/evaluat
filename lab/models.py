@@ -9,7 +9,6 @@ class Laboratorio(models.Model):
     def __str__(self):
         return self.nombre
 
-
 class UserLaboratorio(models.Model):
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='laboratorios')
     laboratorio = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='usuarios')
@@ -52,7 +51,6 @@ class MetodoAnalitico(models.Model):
         return self.nombre
     class Meta:
         verbose_name_plural = "MetodoAnalitico"
-
 
 class Reactivo(models.Model):
     nombre = models.CharField(max_length=255)
@@ -111,7 +109,6 @@ class LaboratorioPruebaConfig(models.Model):
         ]
         verbose_name_plural = "LaboratorioPruebaConfig"
     
-
 class Dato(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='datos')
     prueba_id = models.ForeignKey(Prueba, on_delete=models.PROTECT, related_name='datos')
