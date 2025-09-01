@@ -1,9 +1,175 @@
-<!-- Vista de aceptado de configuraciones por pruebas contratadas -->
-{% load static %} {% block content %}
-<div class="configurations-ccontainer">
-  <h4 class="text-slate-900 dark:text-slate-200 text-lg font-medium mb-6">
-    Configuraciones por aceptar
-  </h4>
-  <div></div>
+{% load static %}
+<div class="container my-4">
+  <h4 class="mb-4 text-primary">Configuraciones por aceptar</h4>
+  <div class="row g-3">
+    {% for prueba in pending_pruebas %}
+    <div class="col-auto">
+      <form
+        method="post"
+        class="card p-2 mb-2 shadow-sm bg-light dark:bg-dark border-0"
+        style="min-width: 320px; max-width: 400px">
+        {% csrf_token %}
+        <input type="hidden" name="prueba_id" value="{{ prueba.id }}" />
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong class="text-primary-emphasis dark:text-light">{{ prueba.nombre }}</strong>
+          <span class="badge bg-warning text-dark">Pendiente</span>
+        </div>
+        <!-- Botón de colapso fuera del d-flex -->
+        <div class="text-end mb-2">
+          <button
+            class="btn btn-link btn-sm p-0 toggle-collapse"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#pending-{{ prueba.id }}"
+            aria-expanded="false"
+            aria-controls="pending-{{ prueba.id }}">
+            <i class="bi bi-chevron-down" id="icon-pending-{{ prueba.id }}"></i>
+          </button>
+        </div>
+        <div class="collapse w-100" id="pending-{{ prueba.id }}">
+          <div class="row mb-2">
+            <div class="col-12 mb-2">
+              <label class="form-label">Instrumento:</label>
+              <select name="instrumento" class="form-select form-select-sm">
+                <option value="">-- Selecciona --</option>
+                {% for instrumento in instrumentos %}
+                <option value="{{ instrumento.id }}">{{ instrumento.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 mb-2">
+              <label class="form-label">Método analítico:</label>
+              <select name="metodo" class="form-select form-select-sm">
+                <option value="">-- Selecciona --</option>
+                {% for metodo in metodos %}
+                <option value="{{ metodo.id }}">{{ metodo.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 mb-2">
+              <label class="form-label">Nombre del reactivo:</label>
+              <select name="reactivo" class="form-select form-select-sm">
+                <option value="">-- Selecciona --</option>
+                {% for reactivo in reactivos %}
+                <option value="{{ reactivo.id }}">{{ reactivo.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 mb-2">
+              <label class="form-label">Unidad de medida:</label>
+              <select name="unidad" class="form-select form-select-sm">
+                <option value="">-- Selecciona --</option>
+                {% for unidad in unidades %}
+                <option value="{{ unidad.id }}">{{ unidad.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="text-end">
+            <button type="submit" name="accion" value="aceptar" class="btn btn-success btn-sm">
+              Aceptar
+            </button>
+            <button type="submit" name="accion" value="proponer" class="btn btn-warning btn-sm">
+              Proponer
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+    {% empty %}
+    <p class="text-secondary dark:text-light">No hay configuraciones pendientes.</p>
+    {% endfor %}
+  </div>
+
+  <h4 class="mb-4 text-primary mt-4">Configuraciones aceptadas</h4>
+  <div class="row g-3">
+    {% for config in accepted_configs %}
+    <div class="col-auto">
+      <div
+        class="card p-2 mb-2 shadow-sm bg-success bg-opacity-10 border-0"
+        style="min-width: 320px; max-width: 400px">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong class="text-primary-emphasis dark:text-light"
+            >{{ config.prueba_id.nombre }}</strong
+          >
+          <span class="badge bg-success">Aceptada</span>
+        </div>
+        <!-- Botón de colapso fuera del d-flex -->
+        <div class="text-end mb-2">
+          <button
+            class="btn btn-link btn-sm p-0 toggle-collapse"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#accepted-{{ config.id }}"
+            aria-expanded="false"
+            aria-controls="accepted-{{ config.id }}">
+            <i class="bi bi-chevron-down" id="icon-accepted-{{ config.id }}"></i>
+          </button>
+        </div>
+        <div class="collapse w-100" id="accepted-{{ config.id }}">
+          <ul class="mb-0 list-group list-group-flush">
+            {% if config.instrumento_id %}
+            <li class="list-group-item bg-transparent text-dark dark:text-light py-1 px-2">
+              <span class="badge bg-primary me-2">Instrumento</span>
+              {{ config.instrumento_id.nombre }}
+            </li>
+            {% endif %} {% if config.metodo_analitico_id %}
+            <li class="list-group-item bg-transparent text-dark dark:text-light py-1 px-2">
+              <span class="badge bg-info me-2">Método analítico</span>
+              {{ config.metodo_analitico_id.nombre }}
+            </li>
+            {% endif %} {% if config.reactivo_id %}
+            <li class="list-group-item bg-transparent text-dark dark:text-light py-1 px-2">
+              <span class="badge bg-warning text-dark me-2">Reactivo</span>
+              {{ config.reactivo_id.nombre }}
+            </li>
+            {% endif %} {% if config.unidad_de_medida_id %}
+            <li class="list-group-item bg-transparent text-dark dark:text-light py-1 px-2">
+              <span class="badge bg-secondary me-2">Unidad de medida</span>
+              {{ config.unidad_de_medida_id.nombre }}
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-secondary dark:text-light">No hay configuraciones aceptadas.</p>
+    {% endfor %}
+  </div>
 </div>
-{% endblock %} {% block customscripts %} {% endblock %}
+<!-- Bootstrap Icons CDN (solo si no lo tienes ya en tu base.html) -->
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.min.css" />
+<script>
+  // Cambia el ícono de flecha según el estado del collapse
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".toggle-collapse").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var targetId = btn.getAttribute("data-bs-target");
+        var icon = btn.querySelector("i");
+        var collapseEl = document.querySelector(targetId);
+        var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
+        // Espera a que termine la animación para cambiar el icono
+        collapseEl.addEventListener("shown.bs.collapse", function handler() {
+          icon.classList.remove("bi-chevron-down");
+          icon.classList.add("bi-chevron-up");
+          collapseEl.removeEventListener("shown.bs.collapse", handler);
+        });
+        collapseEl.addEventListener("hidden.bs.collapse", function handler() {
+          icon.classList.remove("bi-chevron-up");
+          icon.classList.add("bi-chevron-down");
+          collapseEl.removeEventListener("hidden.bs.collapse", handler);
+        });
+      });
+    });
+  });
+  // Corrige el bug visual de Bootstrap Collapse para que el contenido no desaparezca
+  document.addEventListener("show.bs.collapse", function (e) {
+    e.target.style.display = "block";
+  });
+  document.addEventListener("hide.bs.collapse", function (e) {
+    e.target.style.display = "";
+  });
+</script>
