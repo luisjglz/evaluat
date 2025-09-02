@@ -69,17 +69,37 @@ class UnidadDeMedida(models.Model):
     class Meta:
         verbose_name_plural = "UnidadDeMedida"
 
+from django.db import models
+
 class PropiedadARevisar(models.Model):
-    tipoElemento = models.CharField(max_length=255)
+    TIPO_ELEMENTO_CHOICES = (
+        ("instrumento", "Instrumento"),
+        ("metodo", "Método Analítico"),
+        ("reactivo", "Reactivo"),
+        ("unidad", "Unidad"),
+    )
+
+    STATUS_CHOICES = (
+        (0, "Pendiente"),
+        (1, "Aprobado"),
+        (2, "Rechazado"),
+    )
+
+    tipoElemento = models.CharField(max_length=50, choices=TIPO_ELEMENTO_CHOICES)
     valor = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True)
-    status = models.IntegerField()  # 0: pendiente, 1: aprobado, 2: rechazado
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.tipoElemento} - {self.valor}"
-    
+        return f"{self.get_tipoElemento_display()} - {self.valor} ({self.get_status_display()})"
+
     class Meta:
-        verbose_name_plural = "PropiedadesARevisar"
+        verbose_name_plural = "Propiedades a Revisar"
+        ordering = ["-created_at"]
+
 
 class Prueba(models.Model):
     programa_id = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='pruebas')

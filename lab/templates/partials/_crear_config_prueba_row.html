@@ -1,0 +1,43 @@
+<tr>
+  <td>{{ prueba.nombre }}</td>
+  <td>
+    <select name="instrumento" class="form-select">
+      <option value="">Seleccionar</option>
+      {% for inst in instrumentos %}
+        <option value="{{ inst.id }}">{{ inst.nombre }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td>
+    <select name="metodo" class="form-select">
+      <option value="">Seleccionar</option>
+      {% for met in metodos %}
+        <option value="{{ met.id }}">{{ met.nombre }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td>
+    <select name="reactivo" class="form-select">
+      <option value="">Seleccionar</option>
+      {% for reac in reactivos %}
+        <option value="{{ reac.id }}">{{ reac.nombre }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td>
+    <select name="unidad" class="form-select">
+      <option value="">Seleccionar</option>
+      {% for uni in unidades %}
+        <option value="{{ uni.id }}">{{ uni.nombre }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td>
+    <form method="post" action="{% url 'accept_configurations' %}">
+      {% csrf_token %}
+      <input type="hidden" name="prueba_id" value="{{ prueba.id }}">
+      <button type="submit" name="accion" value="aceptar" class="btn btn-success btn-sm">Aceptar</button>
+      <button type="submit" name="accion" value="proponer" class="btn btn-warning btn-sm">Proponer</button>
+    </form>
+  </td>
+</tr>

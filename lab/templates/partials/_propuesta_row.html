@@ -1,0 +1,8 @@
+<tr>
+  <td>{{ prop.tipoElemento }}</td>
+  <td>{{ prop.valor }}</td>
+  <td>{{ prop.descripcion|default:"-" }}</td>
+  <td>
+    {% if prop.status == 0 %}Pendiente{% elif prop.status == 1 %}Aceptado{% else %}Rechazado{% endif %}
+  </td>
+</tr>

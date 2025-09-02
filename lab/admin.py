@@ -38,57 +38,57 @@ class ProgramaLaboratorioAdmin(admin.ModelAdmin):
         # Save the ProgramaLaboratorio record first
         super().save_model(request, obj, form, change)
 
-        laboratorio = obj.laboratorio_id   # FK to Laboratorio
-        programa    = obj.programa_id      # FK to Programa
+        # laboratorio = obj.laboratorio_id   # FK to Laboratorio
+        # programa    = obj.programa_id      # FK to Programa
 
-        # Fetch all Pruebas for this Programa, including selected default relations
-        pruebas_qs = Prueba.objects.filter(programa_id=programa).select_related(
-            "instrumento_seleccionado_id",
-            "metodo_analitico_seleccionado_id",
-            "reactivo_seleccionado_id",
-            "unidad_de_medida_seleccionado_id",
-        )
+        # # Fetch all Pruebas for this Programa, including selected default relations
+        # pruebas_qs = Prueba.objects.filter(programa_id=programa).select_related(
+        #     "instrumento_seleccionado_id",
+        #     "metodo_analitico_seleccionado_id",
+        #     "reactivo_seleccionado_id",
+        #     "unidad_de_medida_seleccionado_id",
+        # )
 
-        # Avoid duplicates: find existing configs for (laboratorio, prueba)
-        existing_prueba_ids = set(
-            LaboratorioPruebaConfig.objects
-            .filter(laboratorio_id=laboratorio, prueba_id__in=pruebas_qs)
-            .values_list("prueba_id_id", flat=True)
-        )
+        # # Avoid duplicates: find existing configs for (laboratorio, prueba)
+        # existing_prueba_ids = set(
+        #     LaboratorioPruebaConfig.objects
+        #     .filter(laboratorio_id=laboratorio, prueba_id__in=pruebas_qs)
+        #     .values_list("prueba_id_id", flat=True)
+        # )
 
-        to_create = []
-        for p in pruebas_qs:
-            if p.id in existing_prueba_ids:
-                continue
+        # to_create = []
+        # for p in pruebas_qs:
+        #     if p.id in existing_prueba_ids:
+        #         continue
 
-            to_create.append(
-                LaboratorioPruebaConfig(
-                    laboratorio_id=laboratorio,
-                    prueba_id=p,
-                    instrumento_id=getattr(p, "instrumento_seleccionado_id", None),
-                    metodo_analitico_id=getattr(p, "metodo_analitico_seleccionado_id", None),
-                    reactivo_id=getattr(p, "reactivo_seleccionado_id", None),
-                    unidad_de_medida_id=getattr(p, "unidad_de_medida_seleccionado_id", None),
-                )
-            )
+        #     to_create.append(
+        #         LaboratorioPruebaConfig(
+        #             laboratorio_id=laboratorio,
+        #             prueba_id=p,
+        #             instrumento_id=getattr(p, "instrumento_seleccionado_id", None),
+        #             metodo_analitico_id=getattr(p, "metodo_analitico_seleccionado_id", None),
+        #             reactivo_id=getattr(p, "reactivo_seleccionado_id", None),
+        #             unidad_de_medida_id=getattr(p, "unidad_de_medida_seleccionado_id", None),
+        #         )
+        #     )
 
-        created_count = 0
-        if to_create:
-            # UniqueConstraint on (laboratorio_id, prueba_id) prevents dupes
-            with transaction.atomic():
-                LaboratorioPruebaConfig.objects.bulk_create(
-                    to_create, ignore_conflicts=True
-                )
-            created_count = len(to_create)
+        # created_count = 0
+        # if to_create:
+        #     # UniqueConstraint on (laboratorio_id, prueba_id) prevents dupes
+        #     with transaction.atomic():
+        #         LaboratorioPruebaConfig.objects.bulk_create(
+        #             to_create, ignore_conflicts=True
+        #         )
+        #     created_count = len(to_create)
 
-        if created_count:
-            messages.success(
-                request,
-                f"Se crearon {created_count} configuraciones en LaboratorioPruebaConfig "
-                f"para {laboratorio} (programa: {programa})."
-            )
-        else:
-            messages.info(
-                request,
-                "No se crearon nuevas configuraciones; ya existían para este laboratorio y programa."
-            )
+        # if created_count:
+        #     messages.success(
+        #         request,
+        #         f"Se crearon {created_count} configuraciones en LaboratorioPruebaConfig "
+        #         f"para {laboratorio} (programa: {programa})."
+        #     )
+        # else:
+        #     messages.info(
+        #         request,
+        #         "No se crearon nuevas configuraciones; ya existían para este laboratorio y programa."
+        #     )

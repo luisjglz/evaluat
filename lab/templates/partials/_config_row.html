@@ -1,0 +1,7 @@
+<tr>
+  <td>{{ config.prueba_id.nombre }}</td>
+  <td>{% if config.instrumento_id %}{{ config.instrumento_id.nombre }}{% else %}-{% endif %}</td>
+  <td>{% if config.metodo_analitico_id %}{{ config.metodo_analitico_id.nombre }}{% else %}-{% endif %}</td>
+  <td>{% if config.reactivo_id %}{{ config.reactivo_id.nombre }}{% else %}-{% endif %}</td>
+  <td>{% if config.unidad_de_medida_id %}{{ config.unidad_de_medida_id.nombre }}{% else %}-{% endif %}</td>
+</tr>
