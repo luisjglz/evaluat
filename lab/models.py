@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 class Laboratorio(models.Model):
     nombre = models.CharField(max_length=255)
