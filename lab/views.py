@@ -1,50 +1,20 @@
-import json, os
-from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render, redirect
+import json
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.views import View
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic.list import ListView
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
-from django.urls import reverse_lazy, reverse
-#from .forms import *
-from .models import *
-from django.views.decorators.csrf import csrf_exempt
-from django.core import serializers
-from django.db.models import Q, Count, F, OuterRef, Subquery, DateTimeField, Exists
-from datetime import datetime
-from django.core.paginator import Paginator
-from django.template.loader import get_template
-#from xhtml2pdf import pisa
-from io import BytesIO
-from django.contrib.auth.hashers import make_password
-from django.shortcuts import get_object_or_404
-from collections import defaultdict
-from pathlib import Path
-from django.db import transaction
-# Para creación de pruebas de manera segura y robusta
 from django.db import transaction, IntegrityError
-from django.contrib import messages
-from django.views.decorators.http import require_http_methods
+from django.views import View
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
 
-# Para la vista de aceptar las configuraciones
 from .models import (
-    LaboratorioPruebaConfig, PropiedadARevisar,
-    Instrumento, MetodoAnalitico, Reactivo, UnidadDeMedida
+    UserLaboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig,
+    Instrumento, MetodoAnalitico, Reactivo, UnidadDeMedida, PropiedadARevisar
 )
 
-
-
-def index(request):
-    return HttpResponse("Hello, world. You're at the polls index.")
-# Create your views here.
-
-
+# ---------- Páginas básicas ----------
 def homepage(request):
-    if (request.method == "POST"):
+    if request.method == "POST":
         username = request.POST["usuario"]
         password = request.POST["password"]
         user = authenticate(request, username=username, password=password)
@@ -53,15 +23,18 @@ def homepage(request):
             next_url = request.POST.get('next') or 'labmainview'
             return redirect(next_url)
         else:
-            messages.error(request, ("Login o password incorrecto"))
+            messages.error(request, "Login o password incorrecto")
             return redirect('homepage')
     return render(request, 'homepage.html', {'next': request.GET.get('next', '')})
 
+
 def logout_user(request):
     logout(request)
-    messages.success(request, ("Logged out"))
+    messages.success(request, "Logged out")
     return redirect('homepage')
 
+
+# ---------- Vista principal del laboratorio ----------
 class LabMainView(LoginRequiredMixin, View):
     template_name = 'labmain.html'
     login_url = 'homepage'
@@ -91,6 +64,14 @@ class LabMainView(LoginRequiredMixin, View):
         reactivos = Reactivo.objects.all()
         unidades = UnidadDeMedida.objects.all()
 
+        # Añadir nombre_prueba a cada config aceptada
+        pruebas_dict = {prueba.id: prueba.nombre for prueba in Prueba.objects.filter(id__in=accepted_prueba_ids)}
+        for config in accepted_configs:
+            config.nombre_prueba = pruebas_dict.get(config.prueba_id.id, "-")
+
+        # Propuestas pendientes
+        propuestas = PropiedadARevisar.objects.all()
+
         context = {
             'pending_pruebas': pending_pruebas,
             'accepted_configs': accepted_configs,
@@ -98,27 +79,13 @@ class LabMainView(LoginRequiredMixin, View):
             'metodos': metodos,
             'reactivos': reactivos,
             'unidades': unidades,
+            'propuestas': propuestas,
             'laboratorio': laboratorio,
         }
         return render(request, self.template_name, context)
-    
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from django.db import transaction, IntegrityError
-from .models import (
-    UserLaboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig,
-    Instrumento, MetodoAnalitico, Reactivo, UnidadDeMedida, PropiedadARevisar
-)
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from django.db import transaction, IntegrityError
-from .models import (
-    UserLaboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig,
-    Instrumento, MetodoAnalitico, Reactivo, UnidadDeMedida, PropiedadARevisar
-)
-
+# ---------- Vista para aceptar / proponer configuraciones ----------
 def accept_configurations(request):
     # 1. Obtener laboratorio asociado al usuario
     laboratorio = None
@@ -135,19 +102,16 @@ def accept_configurations(request):
     programas_ids = ProgramaLaboratorio.objects.filter(
         laboratorio_id=laboratorio.id
     ).values_list('programa_id', flat=True)
-
     pruebas_laboratorio = Prueba.objects.filter(programa_id__in=programas_ids)
 
     # 3. Configuraciones ya aceptadas
     accepted_configs = LaboratorioPruebaConfig.objects.filter(laboratorio_id=laboratorio)
     accepted_prueba_ids = accepted_configs.values_list('prueba_id', flat=True)
 
-    # Diccionario para obtener nombre de prueba por ID
-    pruebas_dict = {prueba.id: prueba.nombre for prueba in Prueba.objects.filter(id__in=accepted_prueba_ids)}
-
     # Añadir atributo nombre_prueba a cada config aceptada
+    pruebas_dict = {prueba.id: prueba.nombre for prueba in Prueba.objects.filter(id__in=accepted_prueba_ids)}
     for config in accepted_configs:
-        config.nombre_prueba = pruebas_dict.get(config.prueba_id, "-")
+        config.nombre_prueba = pruebas_dict.get(config.prueba_id.id, "-")
 
     # 4. Pruebas pendientes de aceptar
     pending_pruebas = pruebas_laboratorio.exclude(id__in=accepted_prueba_ids)
@@ -161,6 +125,9 @@ def accept_configurations(request):
     # 6. Propuestas pendientes
     propuestas = PropiedadARevisar.objects.all()
 
+    # Detectar si es AJAX
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
     # POST: aceptar o proponer configuración
     if request.method == 'POST':
         prueba_id = request.POST.get('prueba_id')
@@ -171,60 +138,76 @@ def accept_configurations(request):
         accion = request.POST.get('accion', 'aceptar')  # aceptar | proponer
 
         if not prueba_id:
-            messages.error(request, "No se indicó la prueba a procesar.")
-            return redirect('accept_configurations')
+            message = "No se indicó la prueba a procesar."
+            if is_ajax:
+                return JsonResponse({'success': False, 'message': message})
+            messages.error(request, message)
+            return redirect('labmainview')
 
         try:
             prueba = Prueba.objects.get(id=prueba_id, programa_id__in=programas_ids)
         except Prueba.DoesNotExist:
-            messages.error(request, "Prueba inválida o no pertenece a tu laboratorio.")
-            return redirect('accept_configurations')
+            message = "Prueba inválida o no pertenece a tu laboratorio."
+            if is_ajax:
+                return JsonResponse({'success': False, 'message': message})
+            messages.error(request, message)
+            return redirect('labmainview')
 
+        # ---------- ACEPTAR CONFIGURACIÓN ----------
         if accion == 'aceptar':
+            # Validar que todos los campos estén llenos
+            if not (instrumento_id and metodo_id and reactivo_id and unidad_id):
+                message = "Todos los campos deben estar completos para aceptar la configuración."
+                if is_ajax:
+                    return JsonResponse({'success': False, 'message': message})
+                messages.error(request, message)
+                return redirect('labmainview')
+
             try:
                 with transaction.atomic():
                     config, created = LaboratorioPruebaConfig.objects.get_or_create(
                         laboratorio_id=laboratorio,
                         prueba_id=prueba,
                         defaults={
-                            'instrumento_id': Instrumento.objects.get(id=instrumento_id) if instrumento_id else None,
-                            'metodo_analitico_id': MetodoAnalitico.objects.get(id=metodo_id) if metodo_id else None,
-                            'reactivo_id': Reactivo.objects.get(id=reactivo_id) if reactivo_id else None,
-                            'unidad_de_medida_id': UnidadDeMedida.objects.get(id=unidad_id) if unidad_id else None,
+                            'instrumento_id': Instrumento.objects.get(id=instrumento_id),
+                            'metodo_analitico_id': MetodoAnalitico.objects.get(id=metodo_id),
+                            'reactivo_id': Reactivo.objects.get(id=reactivo_id),
+                            'unidad_de_medida_id': UnidadDeMedida.objects.get(id=unidad_id),
                         }
                     )
                     if not created:
-                        updated = False
-                        if instrumento_id:
-                            config.instrumento_id = get_object_or_404(Instrumento, id=instrumento_id)
-                            updated = True
-                        if metodo_id:
-                            config.metodo_analitico_id = get_object_or_404(MetodoAnalitico, id=metodo_id)
-                            updated = True
-                        if reactivo_id:
-                            config.reactivo_id = get_object_or_404(Reactivo, id=reactivo_id)
-                            updated = True
-                        if unidad_id:
-                            config.unidad_de_medida_id = get_object_or_404(UnidadDeMedida, id=unidad_id)
-                            updated = True
-                        if updated:
-                            config.save()
-
-                messages.success(request, f"Configuración para '{prueba.nombre}' aceptada correctamente.")
+                        config.instrumento_id = get_object_or_404(Instrumento, id=instrumento_id)
+                        config.metodo_analitico_id = get_object_or_404(MetodoAnalitico, id=metodo_id)
+                        config.reactivo_id = get_object_or_404(Reactivo, id=reactivo_id)
+                        config.unidad_de_medida_id = get_object_or_404(UnidadDeMedida, id=unidad_id)
+                        config.save()
+                message = f"Configuración para '{prueba.nombre}' aceptada correctamente."
+                if is_ajax:
+                    return JsonResponse({'success': True, 'message': message})
+                messages.success(request, message)
+                return redirect('labmainview')
             except IntegrityError:
-                messages.error(request, "Ya existe una configuración para esta prueba.")
+                message = "Ya existe una configuración para esta prueba."
+                if is_ajax:
+                    return JsonResponse({'success': False, 'message': message})
+                messages.error(request, message)
+                return redirect('labmainview')
             except Exception as e:
-                print("Error creando configuración:", e)
-                messages.error(request, "Ocurrió un error al aceptar la configuración.")
+                message = "Ocurrió un error al aceptar la configuración."
+                print("Error:", e)
+                if is_ajax:
+                    return JsonResponse({'success': False, 'message': message})
+                messages.error(request, message)
+                return redirect('labmainview')
 
+        # ---------- PROPONER CONFIGURACIÓN ----------
         else:
-            # Proponer nueva configuración
             try:
                 with transaction.atomic():
                     if instrumento_id:
                         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
                         PropiedadARevisar.objects.create(
-                            tipoElemento='Instrumento',
+                            tipoElemento='instrumento',
                             valor=instrumento.nombre,
                             descripcion=f'Instrumento propuesto para {prueba.nombre}',
                             status=0
@@ -232,7 +215,7 @@ def accept_configurations(request):
                     if metodo_id:
                         metodo = get_object_or_404(MetodoAnalitico, id=metodo_id)
                         PropiedadARevisar.objects.create(
-                            tipoElemento='MetodoAnalitico',
+                            tipoElemento='metodo',
                             valor=metodo.nombre,
                             descripcion=f'Método analítico propuesto para {prueba.nombre}',
                             status=0
@@ -240,7 +223,7 @@ def accept_configurations(request):
                     if reactivo_id:
                         reactivo = get_object_or_404(Reactivo, id=reactivo_id)
                         PropiedadARevisar.objects.create(
-                            tipoElemento='Reactivo',
+                            tipoElemento='reactivo',
                             valor=reactivo.nombre,
                             descripcion=f'Reactivo propuesto para {prueba.nombre}',
                             status=0
@@ -248,18 +231,25 @@ def accept_configurations(request):
                     if unidad_id:
                         unidad = get_object_or_404(UnidadDeMedida, id=unidad_id)
                         PropiedadARevisar.objects.create(
-                            tipoElemento='UnidadDeMedida',
+                            tipoElemento='unidad',
                             valor=unidad.nombre,
                             descripcion=f'Unidad de medida propuesta para {prueba.nombre}',
                             status=0
                         )
-                messages.success(request, f"Propuesta registrada para '{prueba.nombre}'.")
+                message = f"Propuesta registrada para '{prueba.nombre}'."
+                if is_ajax:
+                    return JsonResponse({'success': True, 'message': message})
+                messages.success(request, message)
+                return redirect('labmainview')
             except Exception as e:
                 print("Error creando propuesta:", e)
-                messages.error(request, "Ocurrió un error al proponer la configuración.")
+                message = "Ocurrió un error al proponer la configuración."
+                if is_ajax:
+                    return JsonResponse({'success': False, 'message': message})
+                messages.error(request, message)
+                return redirect('labmainview')
 
-        return redirect('accept_configurations')
-
+    # GET: renderizar la página normalmente
     context = {
         "pending_pruebas": pending_pruebas,
         "accepted_configs": accepted_configs,
@@ -269,5 +259,4 @@ def accept_configurations(request):
         "unidades": unidades,
         "propuestas": propuestas,
     }
-
     return render(request, "accept_configurations.html", context)

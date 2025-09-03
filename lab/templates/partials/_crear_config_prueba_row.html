@@ -1,43 +1,170 @@
 <tr>
   <td>{{ prueba.nombre }}</td>
+
+  <!-- Instrumento -->
   <td>
-    <select name="instrumento" class="form-select">
-      <option value="">Seleccionar</option>
-      {% for inst in instrumentos %}
-        <option value="{{ inst.id }}">{{ inst.nombre }}</option>
-      {% endfor %}
-    </select>
+    <div class="campo-instrumento">
+      <select name="instrumento" class="form-select" required>
+        <option value="">Seleccionar</option>
+        {% for inst in instrumentos %}
+          <option value="{{ inst.id }}">{{ inst.nombre }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm btn-proponer-instrumento mt-1">Proponer instrumento</button>
+
+      <!-- Formulario de propuesta oculto inicialmente -->
+      <div class="propuesta-instrumento mt-2" style="display:none;">
+        <input type="text" name="instrumento_valor" class="form-control" placeholder="Nuevo instrumento">
+        <textarea name="instrumento_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
+        <button type="submit" name="accion" value="proponer_instrumento" class="btn btn-warning btn-sm mt-1">Proponer</button>
+        <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-instrumento">Cancelar</button>
+      </div>
+    </div>
   </td>
+
+  <!-- Método -->
   <td>
-    <select name="metodo" class="form-select">
-      <option value="">Seleccionar</option>
-      {% for met in metodos %}
-        <option value="{{ met.id }}">{{ met.nombre }}</option>
-      {% endfor %}
-    </select>
+    <div class="campo-metodo">
+      <select name="metodo" class="form-select" required>
+        <option value="">Seleccionar</option>
+        {% for met in metodos %}
+          <option value="{{ met.id }}">{{ met.nombre }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm btn-proponer-metodo mt-1">Proponer método</button>
+
+      <div class="propuesta-metodo mt-2" style="display:none;">
+        <input type="text" name="metodo_valor" class="form-control" placeholder="Nuevo método">
+        <textarea name="metodo_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
+        <button type="submit" name="accion" value="proponer_metodo" class="btn btn-warning btn-sm mt-1">Proponer</button>
+        <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-metodo">Cancelar</button>
+      </div>
+    </div>
   </td>
+
+  <!-- Reactivo -->
   <td>
-    <select name="reactivo" class="form-select">
-      <option value="">Seleccionar</option>
-      {% for reac in reactivos %}
-        <option value="{{ reac.id }}">{{ reac.nombre }}</option>
-      {% endfor %}
-    </select>
+    <div class="campo-reactivo">
+      <select name="reactivo" class="form-select" required>
+        <option value="">Seleccionar</option>
+        {% for reac in reactivos %}
+          <option value="{{ reac.id }}">{{ reac.nombre }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm btn-proponer-reactivo mt-1">Proponer reactivo</button>
+
+      <div class="propuesta-reactivo mt-2" style="display:none;">
+        <input type="text" name="reactivo_valor" class="form-control" placeholder="Nuevo reactivo">
+        <textarea name="reactivo_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
+        <button type="submit" name="accion" value="proponer_reactivo" class="btn btn-warning btn-sm mt-1">Proponer</button>
+        <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-reactivo">Cancelar</button>
+      </div>
+    </div>
   </td>
+
+  <!-- Unidad -->
   <td>
-    <select name="unidad" class="form-select">
-      <option value="">Seleccionar</option>
-      {% for uni in unidades %}
-        <option value="{{ uni.id }}">{{ uni.nombre }}</option>
-      {% endfor %}
-    </select>
+    <div class="campo-unidad">
+      <select name="unidad" class="form-select" required>
+        <option value="">Seleccionar</option>
+        {% for uni in unidades %}
+          <option value="{{ uni.id }}">{{ uni.nombre }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm btn-proponer-unidad mt-1">Proponer unidad</button>
+
+      <div class="propuesta-unidad mt-2" style="display:none;">
+        <input type="text" name="unidad_valor" class="form-control" placeholder="Nueva unidad">
+        <textarea name="unidad_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
+        <button type="submit" name="accion" value="proponer_unidad" class="btn btn-warning btn-sm mt-1">Proponer</button>
+        <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-unidad">Cancelar</button>
+      </div>
+    </div>
   </td>
+
+  <!-- Acciones generales -->
   <td>
     <form method="post" action="{% url 'accept_configurations' %}">
       {% csrf_token %}
       <input type="hidden" name="prueba_id" value="{{ prueba.id }}">
       <button type="submit" name="accion" value="aceptar" class="btn btn-success btn-sm">Aceptar</button>
-      <button type="submit" name="accion" value="proponer" class="btn btn-warning btn-sm">Proponer</button>
     </form>
   </td>
 </tr>
+
+<!-- NOTA: Para funcionalidad de mostrar/ocultar propuestas se requiere JS -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Instrumento
+  document.querySelectorAll('.btn-proponer-instrumento').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.campo-instrumento');
+      container.querySelector('select').style.display = 'none';
+      container.querySelector('.btn-proponer-instrumento').style.display = 'none';
+      container.querySelector('.propuesta-instrumento').style.display = 'block';
+    });
+  });
+  document.querySelectorAll('.btn-cancelar-instrumento').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.campo-instrumento');
+      container.querySelector('select').style.display = 'block';
+      container.querySelector('.btn-proponer-instrumento').style.display = 'inline-block';
+      container.querySelector('.propuesta-instrumento').style.display = 'none';
+    });
+  });
+
+  // Método
+  document.querySelectorAll('.btn-proponer-metodo').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.campo-metodo');
+      container.querySelector('select').style.display = 'none';
+      container.querySelector('.btn-proponer-metodo').style.display = 'none';
+      container.querySelector('.propuesta-metodo').style.display = 'block';
+    });
+  });
+  document.querySelectorAll('.btn-cancelar-metodo').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.campo-metodo');
+      container.querySelector('select').style.display = 'block';
+      container.querySelector('.btn-proponer-metodo').style.display = 'inline-block';
+      container.querySelector('.propuesta-metodo').style.display = 'none';
+    });
+  });
+
+  // Reactivo
+  document.querySelectorAll('.btn-proponer-reactivo').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.campo-reactivo');
+      container.querySelector('select').style.display = 'none';
+      container.querySelector('.btn-proponer-reactivo').style.display = 'none';
+      container.querySelector('.propuesta-reactivo').style.display = 'block';
+    });
+  });
+  document.querySelectorAll('.btn-cancelar-reactivo').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.campo-reactivo');
+      container.querySelector('select').style.display = 'block';
+      container.querySelector('.btn-proponer-reactivo').style.display = 'inline-block';
+      container.querySelector('.propuesta-reactivo').style.display = 'none';
+    });
+  });
+
+  // Unidad
+  document.querySelectorAll('.btn-proponer-unidad').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.campo-unidad');
+      container.querySelector('select').style.display = 'none';
+      container.querySelector('.btn-proponer-unidad').style.display = 'none';
+      container.querySelector('.propuesta-unidad').style.display = 'block';
+    });
+  });
+  document.querySelectorAll('.btn-cancelar-unidad').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.campo-unidad');
+      container.querySelector('select').style.display = 'block';
+      container.querySelector('.btn-proponer-unidad').style.display = 'inline-block';
+      container.querySelector('.propuesta-unidad').style.display = 'none';
+    });
+  });
+});
+</script>
