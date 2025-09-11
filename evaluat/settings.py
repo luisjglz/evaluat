@@ -16,6 +16,13 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Authentication settings for login
+LOGIN_URL = 'homepage'      # dónde redirige login_required
+LOGIN_REDIRECT_URL = 'select_lab'   # a dónde ir si no hay ?next=
+LOGOUT_REDIRECT_URL = 'homepage'    # opcional
+
+
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/

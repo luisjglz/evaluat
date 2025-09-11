@@ -1,10 +1,10 @@
-<tr>
+<tr data-prueba-id="{{ prueba.id }}">
   <td>{{ prueba.nombre }}</td>
 
   <!-- Instrumento -->
   <td>
     <div class="campo-instrumento">
-      <select name="instrumento" class="form-select" required>
+      <select name="instrumento_id" class="form-select campo-select" required>
         <option value="">Seleccionar</option>
         {% for inst in instrumentos %}
           <option value="{{ inst.id }}">{{ inst.nombre }}</option>
@@ -16,16 +16,19 @@
       <div class="propuesta-instrumento mt-2" style="display:none;">
         <input type="text" name="instrumento_valor" class="form-control" placeholder="Nuevo instrumento">
         <textarea name="instrumento_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
-        <button type="submit" name="accion" value="proponer_instrumento" class="btn btn-warning btn-sm mt-1">Proponer</button>
+        <button type="button" class="btn btn-warning btn-sm mt-1 btn-confirmar-propuesta" data-tipo="instrumento">Proponer</button>
         <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-instrumento">Cancelar</button>
       </div>
+      
+      <!-- Mensaje de error específico -->
+      <div class="error-message text-danger small mt-1" style="display:none;"></div>
     </div>
   </td>
 
   <!-- Método -->
   <td>
     <div class="campo-metodo">
-      <select name="metodo" class="form-select" required>
+      <select name="metodo_analitico_id" class="form-select campo-select" required>
         <option value="">Seleccionar</option>
         {% for met in metodos %}
           <option value="{{ met.id }}">{{ met.nombre }}</option>
@@ -36,16 +39,18 @@
       <div class="propuesta-metodo mt-2" style="display:none;">
         <input type="text" name="metodo_valor" class="form-control" placeholder="Nuevo método">
         <textarea name="metodo_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
-        <button type="submit" name="accion" value="proponer_metodo" class="btn btn-warning btn-sm mt-1">Proponer</button>
+        <button type="button" class="btn btn-warning btn-sm mt-1 btn-confirmar-propuesta" data-tipo="metodo">Proponer</button>
         <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-metodo">Cancelar</button>
       </div>
+      
+      <div class="error-message text-danger small mt-1" style="display:none;"></div>
     </div>
   </td>
 
   <!-- Reactivo -->
   <td>
     <div class="campo-reactivo">
-      <select name="reactivo" class="form-select" required>
+      <select name="reactivo_id" class="form-select campo-select" required>
         <option value="">Seleccionar</option>
         {% for reac in reactivos %}
           <option value="{{ reac.id }}">{{ reac.nombre }}</option>
@@ -56,16 +61,18 @@
       <div class="propuesta-reactivo mt-2" style="display:none;">
         <input type="text" name="reactivo_valor" class="form-control" placeholder="Nuevo reactivo">
         <textarea name="reactivo_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
-        <button type="submit" name="accion" value="proponer_reactivo" class="btn btn-warning btn-sm mt-1">Proponer</button>
+        <button type="button" class="btn btn-warning btn-sm mt-1 btn-confirmar-propuesta" data-tipo="reactivo">Proponer</button>
         <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-reactivo">Cancelar</button>
       </div>
+      
+      <div class="error-message text-danger small mt-1" style="display:none;"></div>
     </div>
   </td>
 
   <!-- Unidad -->
   <td>
     <div class="campo-unidad">
-      <select name="unidad" class="form-select" required>
+      <select name="unidad_de_medida_id" class="form-select campo-select" required>
         <option value="">Seleccionar</option>
         {% for uni in unidades %}
           <option value="{{ uni.id }}">{{ uni.nombre }}</option>
@@ -76,95 +83,237 @@
       <div class="propuesta-unidad mt-2" style="display:none;">
         <input type="text" name="unidad_valor" class="form-control" placeholder="Nueva unidad">
         <textarea name="unidad_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
-        <button type="submit" name="accion" value="proponer_unidad" class="btn btn-warning btn-sm mt-1">Proponer</button>
+        <button type="button" class="btn btn-warning btn-sm mt-1 btn-confirmar-propuesta" data-tipo="unidad">Proponer</button>
         <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-unidad">Cancelar</button>
       </div>
+      
+      <div class="error-message text-danger small mt-1" style="display:none;"></div>
     </div>
   </td>
 
   <!-- Acciones generales -->
   <td>
-    <form method="post" action="{% url 'accept_configurations' %}">
+    <form class="form-configuracion" data-prueba-id="{{ prueba.id }}">
       {% csrf_token %}
       <input type="hidden" name="prueba_id" value="{{ prueba.id }}">
-      <button type="submit" name="accion" value="aceptar" class="btn btn-success btn-sm">Aceptar</button>
+      
+      <!-- Botón Aceptar (solo valores existentes) -->
+      <button type="button" class="btn btn-success btn-sm btn-aceptar-config">
+        <span class="btn-text">Aceptar</span>
+        <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+      </button>
+      
+      <!-- Mensaje de estado -->
+      <!-- <div class="config-status mt-1"></div> -->
     </form>
   </td>
 </tr>
 
-<!-- NOTA: Para funcionalidad de mostrar/ocultar propuestas se requiere JS -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Instrumento
-  document.querySelectorAll('.btn-proponer-instrumento').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const container = this.closest('.campo-instrumento');
-      container.querySelector('select').style.display = 'none';
-      container.querySelector('.btn-proponer-instrumento').style.display = 'none';
-      container.querySelector('.propuesta-instrumento').style.display = 'block';
-    });
-  });
-  document.querySelectorAll('.btn-cancelar-instrumento').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const container = this.closest('.campo-instrumento');
-      container.querySelector('select').style.display = 'block';
-      container.querySelector('.btn-proponer-instrumento').style.display = 'inline-block';
-      container.querySelector('.propuesta-instrumento').style.display = 'none';
+// ===== Utilidades CSRF (recomendado por Django para fetch) =====
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+function getCSRFToken() {
+  return getCookie('csrftoken') || (document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
+}
+
+// ===== Helpers UI por-fila =====
+function mostrarError(container, mensaje) {
+  const errorDiv = container.querySelector('.error-message');
+  if (!errorDiv) return;
+  errorDiv.textContent = mensaje;
+  errorDiv.style.display = 'block';
+  setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+}
+function toggleLoading(btn, loading) {
+  const text = btn.querySelector('.btn-text');
+  const spinner = btn.querySelector('.spinner-border');
+  if (!text || !spinner) return;
+  if (loading) { text.classList.add('d-none'); spinner.classList.remove('d-none'); btn.disabled = true; }
+  else { text.classList.remove('d-none'); spinner.classList.add('d-none'); btn.disabled = false; }
+}
+
+// ===== IIFE por fila: captura el <script> actual de inmediato =====
+(function () {
+  // Plan A: si el <script> está dentro del <tr>; Plan B: buscar por data-prueba-id si no hay contenedor directo. [4]
+  const scriptEl = document.currentScript;
+  let row = scriptEl.closest('tr');
+  if (!row) { row = document.querySelector('tr[data-prueba-id="{{ prueba.id }}"]'); }
+  if (!row) { window.showGlobalMessage && window.showGlobalMessage('danger', 'No se pudo inicializar la fila de configuración.'); return; }
+
+  // Mostrar/ocultar UI de propuestas
+  function setupPropuestaToggle(tipo) {
+    const btnProponer = row.querySelector(`.btn-proponer-${tipo}`);
+    const btnCancelar = row.querySelector(`.btn-cancelar-${tipo}`);
+    const select = row.querySelector(`.campo-${tipo} select`);
+    const propuesta = row.querySelector(`.propuesta-${tipo}`);
+    if (btnProponer && btnCancelar && select && propuesta) {
+      btnProponer.addEventListener('click', function() {
+        select.style.display = 'none';
+        btnProponer.style.display = 'none';
+        propuesta.style.display = 'block';
+      });
+      btnCancelar.addEventListener('click', function() {
+        select.style.display = 'block';
+        btnProponer.style.display = 'inline-block';
+        propuesta.style.display = 'none';
+        propuesta.querySelector('input[type="text"]').value = '';
+        propuesta.querySelector('textarea').value = '';
+      });
+    }
+  }
+  ['instrumento', 'metodo', 'reactivo', 'unidad'].forEach(setupPropuestaToggle);  // [1]
+
+  // Enviar propuesta (AJAX)
+  row.querySelectorAll('.btn-confirmar-propuesta').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const tipo = this.dataset.tipo;
+      const container = this.closest(`.campo-${tipo}`);
+      const valor = container.querySelector(`[name="${tipo}_valor"]`).value.trim();
+      const descripcion = container.querySelector(`[name="${tipo}_descripcion"]`).value.trim();
+      if (!valor) { mostrarError(container, 'El valor es requerido'); return; }
+
+      try {
+        const fd = new FormData();
+        fd.append('prueba_id', {{ prueba.id }});
+        fd.append('accion', `proponer_${tipo}`);
+        fd.append(`${tipo}_valor`, valor);
+        fd.append(`${tipo}_descripcion`, descripcion);
+
+        const response = await fetch("{% url 'lab:save_config' %}", {
+          method: 'POST',
+          body: fd,
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': getCSRFToken() },
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        if (response.ok) {
+          // Mensaje local discreto en el campo (opcional)
+          // mostrarEstado(container, `${tipo} propuesto exitosamente`, 'success');
+          // Mensaje global visible
+          window.showGlobalMessage && window.showGlobalMessage('success', data.message || 'Propuesta registrada.');
+          // Volver a select y recargar para reflejar la propuesta en la tabla superior
+          container.querySelector(`.btn-cancelar-${tipo}`).click();
+          if (data.propuesta) { agregarPropuestaAlDOM(data.propuesta); }  // ← inserta fila
+        } else {
+          mostrarError(container, data.error || 'Error al proponer');
+          window.showGlobalMessage && window.showGlobalMessage('danger', data.error || 'Error al proponer.');
+        }
+      } catch (e) {
+        mostrarError(container, 'Error de conexión');
+        window.showGlobalMessage && window.showGlobalMessage('danger', 'Error de conexión.');
+      }
     });
   });
 
-  // Método
-  document.querySelectorAll('.btn-proponer-metodo').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const container = this.closest('.campo-metodo');
-      container.querySelector('select').style.display = 'none';
-      container.querySelector('.btn-proponer-metodo').style.display = 'none';
-      container.querySelector('.propuesta-metodo').style.display = 'block';
-    });
-  });
-  document.querySelectorAll('.btn-cancelar-metodo').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const container = this.closest('.campo-metodo');
-      container.querySelector('select').style.display = 'block';
-      container.querySelector('.btn-proponer-metodo').style.display = 'inline-block';
-      container.querySelector('.propuesta-metodo').style.display = 'none';
-    });
-  });
+  // Aceptar configuración (AJAX) — sin mensajes debajo del botón (solo globales)
+  const btnAceptar = row.querySelector('.btn-aceptar-config');
+  if (btnAceptar) {
+    btnAceptar.addEventListener('click', async function() {
+      const form = this.closest('.form-configuracion');
 
-  // Reactivo
-  document.querySelectorAll('.btn-proponer-reactivo').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const container = this.closest('.campo-reactivo');
-      container.querySelector('select').style.display = 'none';
-      container.querySelector('.btn-proponer-reactivo').style.display = 'none';
-      container.querySelector('.propuesta-reactivo').style.display = 'block';
-    });
-  });
-  document.querySelectorAll('.btn-cancelar-reactivo').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const container = this.closest('.campo-reactivo');
-      container.querySelector('select').style.display = 'block';
-      container.querySelector('.btn-proponer-reactivo').style.display = 'inline-block';
-      container.querySelector('.propuesta-reactivo').style.display = 'none';
-    });
-  });
+      // 1) No aceptar con cajas de propuesta abiertas (UX) [1]
+      const abiertas = row.querySelectorAll('.propuesta-instrumento, .propuesta-metodo, .propuesta-reactivo, .propuesta-unidad');
+      for (const b of abiertas) {
+        if (getComputedStyle(b).display !== 'none') {
+          window.showGlobalMessage && window.showGlobalMessage('warning', 'Cierra o envía la propuesta antes de aceptar');
+          return;
+        }
+      }
 
-  // Unidad
-  document.querySelectorAll('.btn-proponer-unidad').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const container = this.closest('.campo-unidad');
-      container.querySelector('select').style.display = 'none';
-      container.querySelector('.btn-proponer-unidad').style.display = 'none';
-      container.querySelector('.propuesta-unidad').style.display = 'block';
+      // 2) Validación de selects en cliente (UX)
+      const selects = row.querySelectorAll('.campo-select');
+      const faltantes = [];
+      selects.forEach(s => { if (!s.value) faltantes.push(s.name.replace('_id','').replace('_',' ')); });
+      if (faltantes.length) {
+        window.showGlobalMessage && window.showGlobalMessage('warning', 'Campos faltantes: ' + faltantes.join(', '));
+        return;
+      }
+
+      // 3) Enviar a backend
+      toggleLoading(btnAceptar, true);
+      try {
+        const fd = new FormData(form);
+        fd.append('accion', 'aceptar');
+        // Como los <select> no están dentro del <form>, hay que agregarlos manualmente al FormData [1]
+        selects.forEach(s => fd.append(s.name, s.value));
+
+        const response = await fetch("{% url 'lab:save_config' %}", {
+          method: 'POST',
+          body: fd,
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': getCSRFToken() },
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        if (response.ok) {
+          window.showGlobalMessage && window.showGlobalMessage('success', data.message || 'Configuración aceptada.');
+          setTimeout(() => { location.reload(); }, 900);
+        } else {
+          window.showGlobalMessage && window.showGlobalMessage('danger', data.error || 'Error al aceptar configuración');
+        }
+      } catch (e) {
+        window.showGlobalMessage && window.showGlobalMessage('danger', 'Error de conexión');
+      } finally {
+        toggleLoading(btnAceptar, false);
+      }
     });
-  });
-  document.querySelectorAll('.btn-cancelar-unidad').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const container = this.closest('.campo-unidad');
-      container.querySelector('select').style.display = 'block';
-      container.querySelector('.btn-proponer-unidad').style.display = 'inline-block';
-      container.querySelector('.propuesta-unidad').style.display = 'none';
-    });
-  });
-});
+  }
+})();
+
+// Mapas para etiquetas de tipo y status
+function labelTipoElemento(tipo) {
+  return tipo === 'instrumento' ? 'Instrumento'
+       : tipo === 'metodo'      ? 'Método Analítico'
+       : tipo === 'reactivo'    ? 'Reactivo'
+       : tipo === 'unidad'      ? 'Unidad'
+       : tipo;
+}
+function labelStatus(code, textFallback) {
+  if (typeof code === 'number') {
+    return code === 0 ? 'Pendiente' : (code === 1 ? 'Aprobado' : 'Rechazado');
+  }
+  return textFallback || 'Pendiente';
+}
+
+// Inserta una propuesta nueva en la tabla sin recargar
+function agregarPropuestaAlDOM(propuesta) {
+  const wrapper = document.getElementById('propuestas-wrapper');
+  if (!wrapper) return;
+
+  const pEmpty = document.getElementById('sin-propuestas');
+  const table = document.getElementById('tabla-propuestas');
+  const tbody = document.getElementById('propuestas-body');
+
+  // Si no había propuestas, mostrar la tabla y ocultar el mensaje vacío
+  if (pEmpty && getComputedStyle(pEmpty).display !== 'none') {
+    pEmpty.style.display = 'none';
+    if (table) table.style.display = '';
+  }
+
+  if (!tbody) return;
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${labelTipoElemento(propuesta.tipoElemento)}</td>
+    <td>${propuesta.valor}</td>
+    <td>${(propuesta.descripcion || '-')}</td>
+    <td>${labelStatus(propuesta.status, propuesta.status_text)}</td>
+  `;
+  tbody.prepend(tr); // insertar al inicio para visibilidad inmediata
+}
 </script>
+
+
+

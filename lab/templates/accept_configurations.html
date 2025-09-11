@@ -10,6 +10,22 @@
   </div>
   {% endif %}
 
+  <!-- Contenedor de mensajes AJAX (después del bloque de mensajes de Django) -->
+  <div id="ajax-messages"></div>
+  <script>
+    window.showGlobalMessage = function(type, text) {
+      // type: 'success' | 'danger' | 'info' | 'warning'
+      const box = document.getElementById('ajax-messages');
+      if (!box) return;
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = text;
+      box.innerHTML = '';
+      box.appendChild(alert);
+      setTimeout(() => { if (alert.parentNode) alert.remove(); }, 6000);
+    }
+  </script>
+
   <!-- Pruebas pendientes -->
   <h4>Pruebas pendientes por configurar</h4>
   {% if pending_pruebas %}
@@ -63,23 +79,37 @@
 
   <!-- Propuestas -->
   <h4>Propuestas de propiedades</h4>
-  {% if propuestas %}
-  <table class="table table-hover">
-    <thead>
-      <tr>
-        <th>Tipo</th>
-        <th>Valor</th>
-        <th>Descripción</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for prop in propuestas %}
-        {% include "partials/_propuesta_row.html" with prop=prop %}
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p>No hay propuestas registradas.</p>
-  {% endif %}
+  <div id="propuestas-wrapper">
+    {% if propuestas %}
+    <table id="tabla-propuestas" class="table table-hover">
+      <thead>
+        <tr>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th>Descripción</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="propuestas-body">
+        {% for prop in propuestas %}
+          {% include "partials/_propuesta_row.html" with prop=prop %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p id="sin-propuestas">No hay propuestas registradas.</p>
+      <table id="tabla-propuestas" class="table table-hover" style="display:none;">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Valor</th>
+            <th>Descripción</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="propuestas-body"></tbody>
+      </table>
+    {% endif %}
+  </div>
+
 </div>
