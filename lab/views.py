@@ -8,6 +8,9 @@ from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse, reverse_lazy
 from django.db import transaction, IntegrityError
+from django.utils import timezone
+from .utils import puede_editar_config
+
 
 from .models import (
     UserLaboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig,
@@ -323,3 +326,55 @@ def accept_configurations(request):
         "propuestas": propuestas,
     }
     return render(request, "accept_configurations.html", context)
+
+# --------------------------
+# Vista para actualizar configuración existente
+# --------------------------
+@login_required
+@transaction.atomic
+def actualizar_configuracion(request, config_id):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)  # [22]
+
+    config = get_object_or_404(LaboratorioPruebaConfig, id=config_id)
+    laboratorio = config.laboratorio_id
+
+    # Seguridad: pertenencia usuario-lab
+    if not UserLaboratorio.objects.filter(user_id=request.user, laboratorio_id=laboratorio.id).exists():
+        return JsonResponse({"success": False, "error": "Acceso denegado"}, status=403)  # [22]
+
+    # Ventana de edición y bloqueos
+    if not puede_editar_config(laboratorio, config):
+        return JsonResponse({"success": False, "error": "La edición está bloqueada por ventana de tiempo o bandera de bloqueo"}, status=403)  # [1][9]
+
+    # Validar que la prueba pertenece a los programas del laboratorio (consistencia)
+    programas_ids = ProgramaLaboratorio.objects.filter(laboratorio_id=laboratorio.id).values_list("programa_id", flat=True)
+    if not Prueba.objects.filter(id=config.prueba_id.id, programa_id__in=programas_ids).exists():
+        return JsonResponse({"success": False, "error": "Prueba no pertenece al laboratorio"}, status=400)  # [22]
+
+    # Validar y setear campos
+    campos = {
+        "instrumento_id": (request.POST.get("instrumento_id"), Instrumento),
+        "metodo_analitico_id": (request.POST.get("metodo_analitico_id"), MetodoAnalitico),
+        "reactivo_id": (request.POST.get("reactivo_id"), Reactivo),
+        "unidad_de_medida_id": (request.POST.get("unidad_de_medida_id"), UnidadDeMedida),
+    }
+    faltantes = [k.replace("_id","").replace("_"," ").title() for k,(v,_) in campos.items() if not v]
+    if faltantes:
+        return JsonResponse({"success": False, "error": "Campos faltantes: " + ", ".join(faltantes)}, status=400)  # [22]
+
+    instancias = {}
+    for campo, (valor_id, Modelo) in campos.items():
+        try:
+            instancias[campo] = Modelo.objects.get(id=valor_id)
+        except Modelo.DoesNotExist:
+            return JsonResponse({"success": False, "error": f"{campo.replace('_id','').replace('_',' ').title()} no existe"}, status=400)  # [22]
+
+    # Aplicar cambios
+    config.instrumento_id = instancias["instrumento_id"]
+    config.metodo_analitico_id = instancias["metodo_analitico_id"]
+    config.reactivo_id = instancias["reactivo_id"]
+    config.unidad_de_medida_id = instancias["unidad_de_medida_id"]
+    config.save()
+
+    return JsonResponse({"success": True, "message": "Configuración actualizada"}, status=200)  # [22]

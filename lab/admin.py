@@ -3,19 +3,23 @@ from django.apps import apps
 from django.db import transaction
 
 # Import only what we need for the custom logic
-from .models import ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig
+from .models import Laboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig
 
 # ------------ 1) Auto-register all models EXCEPT the ones we want custom ------------
+lab_app = apps.get_app_config('lab')
+
 # Add ProgramaLaboratorio to the excluded list so we can register it with a custom admin below.
 excluded_models = {
     'LogEntry', 'Permission', 'Groups', 'Session', 'ContentType',
-    'ProgramaLaboratorio',  # <-- handled manually below
+    'ProgramaLaboratorio', 'Laboratorio', 'LaboratorioPruebaConfig', 'ProgramaLaboratorio'  # <-- handled manually below
 }
 
 for model in apps.get_models():
     name = model.__name__
     if name in excluded_models:
         continue
+    if model in admin.site._registry:
+        continue  # por si el modelo a registrar ya está registrado por otra parte
     try:
         admin.site.register(model)
     except admin.sites.AlreadyRegistered:
@@ -92,3 +96,15 @@ class ProgramaLaboratorioAdmin(admin.ModelAdmin):
         #         request,
         #         "No se crearon nuevas configuraciones; ya existían para este laboratorio y programa."
         #     )
+
+# ------------ 3) Custom admin for Laboratorio to manage override flags for editing the configurations ------------
+@admin.register(Laboratorio)
+class LaboratorioAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "edicion_hasta_dia", "override_edicion_activa", "override_edicion_hasta")
+    fields = ("nombre", "clave", "edicion_hasta_dia", "override_edicion_activa", "override_edicion_hasta")
+    # Admin estándar para alternar bandera y fecha límite de override.  # [9]
+
+@admin.register(LaboratorioPruebaConfig)
+class LaboratorioPruebaConfigAdmin(admin.ModelAdmin):
+    list_display = ("laboratorio_id", "prueba_id", "instrumento_id", "metodo_analitico_id", "reactivo_id", "unidad_de_medida_id", "bloqueada")
+    list_editable = ("bloqueada",)  # editable en la lista para rapidez  # [9][19]

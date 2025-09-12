@@ -4,4 +4,11 @@
   <td>{% if config.metodo_analitico_id %}{{ config.metodo_analitico_id.nombre }}{% else %}-{% endif %}</td>
   <td>{% if config.reactivo_id %}{{ config.reactivo_id.nombre }}{% else %}-{% endif %}</td>
   <td>{% if config.unidad_de_medida_id %}{{ config.unidad_de_medida_id.nombre }}{% else %}-{% endif %}</td>
+  <td>
+    {% if laboratorio.override_edicion_activa or today|date:"j" <= laboratorio.edicion_hasta_dia and not config.bloqueada %}
+      <button class="btn btn-sm btn-primary btn-editar-config" data-config-id="{{ config.id }}">Editar</button>
+    {% else %}
+      <button class="btn btn-sm btn-secondary" disabled>Edición bloqueada</button>
+    {% endif %}
+  </td>
 </tr>

@@ -11,5 +11,6 @@ urlpatterns = [
     path("logout/", views.logout_user, name='logout'),
     path("lab/", views.LabMainView.as_view(), name='labmainview'),
     path("accept-configurations/", views.accept_configurations, name='accept_configurations'),
-    path("config/save/", views.crear_o_actualizar_configuracion, name="save_config"),  # ← REQUERIDA
+    path("config/save/", views.crear_o_actualizar_configuracion, name="save_config"),
+    path("config/update/<int:config_id>/", views.actualizar_configuracion, name="update_config"),
 ]

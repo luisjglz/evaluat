@@ -6,7 +6,10 @@ class Laboratorio(models.Model):
     nombre = models.CharField(max_length=255)
     clave = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    edicion_hasta_dia = models.PositiveSmallIntegerField(default=15) # Con esto un admin puede cambiar el día límite (p.ej. 15),
+    override_edicion_activa = models.BooleanField(default=False) # activar una excepción y opcionalmente fijar una fecha hasta cuándo aplica.
+    override_edicion_hasta = models.DateField(null=True, blank=True)
+    
     def __str__(self):
         return self.nombre
 
@@ -120,6 +123,7 @@ class LaboratorioPruebaConfig(models.Model):
     metodo_analitico_id = models.ForeignKey(MetodoAnalitico, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_metodo_analitico_id', null=True, blank=True)
     reactivo_id = models.ForeignKey(Reactivo, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_pruebas_reactivo_id', null=True, blank=True)
     unidad_de_medida_id = models.ForeignKey(UnidadDeMedida, on_delete=models.PROTECT, related_name='laboratorio_prueba_config_pruebas_unidad_de_medida_id', null=True, blank=True)
+    bloqueada = models.BooleanField(default=False)  # bloqueo puntual por configuración
 
     def __str__(self):
         return f"{self.laboratorio_id} - {self.prueba_id}"
