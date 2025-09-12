@@ -9,7 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse, reverse_lazy
 from django.db import transaction, IntegrityError
 from django.utils import timezone
-from .utils import puede_editar_config
+from .utils.puede_editar_config import puede_editar_config
 
 
 from .models import (
@@ -72,14 +72,11 @@ def logout_user(request):
 # --------------------------
 class LabMainView(LoginRequiredMixin, View):
     template_name = 'labmain.html'
-    # login_url = 'homepage'
     login_url = reverse_lazy('lab:homepage')
 
     def get(self, request):
         laboratorio_id = request.session.get("laboratorio_seleccionado")
-        laboratorio = None
-        if laboratorio_id:
-            laboratorio = Laboratorio.objects.filter(id=laboratorio_id).first()
+        laboratorio = Laboratorio.objects.filter(id=laboratorio_id).first() if laboratorio_id else None
 
         if not laboratorio:
             messages.error(request, "No hay laboratorio asociado a tu usuario.")
@@ -94,15 +91,23 @@ class LabMainView(LoginRequiredMixin, View):
         accepted_prueba_ids = accepted_configs.values_list('prueba_id', flat=True)
         pending_pruebas = pruebas_laboratorio.exclude(id__in=accepted_prueba_ids)
 
+        # Construir el wrapper con el flag can_edit por fila
+        accepted_configs_wrapped = [
+            {"obj": c, "can_edit": puede_editar_config(laboratorio, c)}
+            for c in accepted_configs
+        ]
+
         context = {
             'pending_pruebas': pending_pruebas,
-            'accepted_configs': accepted_configs,
+            'accepted_configs': accepted_configs,               # si lo usas en otras partes
+            'accepted_configs_wrapped': accepted_configs_wrapped,  # para Acciones/Editar
             'instrumentos': Instrumento.objects.all(),
             'metodos': MetodoAnalitico.objects.all(),
             'reactivos': Reactivo.objects.all(),
             'unidades': UnidadDeMedida.objects.all(),
             'laboratorio': laboratorio,
             'propuestas': PropiedadARevisar.objects.all(),
+            'today': timezone.localdate(),  # opcional, solo para display
         }
         return render(request, self.template_name, context)
 

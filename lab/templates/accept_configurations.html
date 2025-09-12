@@ -54,7 +54,7 @@
 
   <!-- Configuraciones aceptadas -->
   <h4>Pruebas configuradas</h4>
-  {% if accepted_configs %}
+  {% if accepted_configs_wrapped  %}
   <table class="table table-bordered">
     <thead>
       <tr>
@@ -63,11 +63,14 @@
         <th>Método</th>
         <th>Reactivo</th>
         <th>Unidad</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
-      {% for config in accepted_configs %}
-        {% include "partials/_config_row.html" with config=config %}
+      {% for row in accepted_configs_wrapped %}
+        {% with config=row.obj can_edit=row.can_edit %}
+          {% include "partials/_config_row.html" with config=config can_edit=can_edit %}
+        {% endwith %}
       {% endfor %}
     </tbody>
   </table>
@@ -113,3 +116,122 @@
   </div>
 
 </div>
+
+<script>
+// CSRF helpers (Django)
+function getCookie(name) {
+  let v = null;
+  if (document.cookie && document.cookie !== '') {
+    const cs = document.cookie.split(';');
+    for (let i=0;i<cs.length;i++){
+      const c = cs[i].trim();
+      if (c.substring(0, name.length + 1) === (name + '=')) {
+        v = decodeURIComponent(c.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return v;
+}
+function getCSRFToken(){ return getCookie('csrftoken') || (document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''); }
+
+// Delegación de eventos para botones de edición en la tabla de configuradas
+document.addEventListener('click', async function(ev){
+  const btn = ev.target.closest('.btn-editar-config, .btn-guardar-config, .btn-cancelar-config');
+  if (!btn) return;
+
+  const row = btn.closest('.config-row');
+  if (!row) return;
+
+  const viewCells = row.querySelectorAll('.cell-view');
+  const editCell  = row.querySelector('.cell-edit');
+  const btnEditar  = row.querySelector('.btn-editar-config');
+  const btnGuardar = row.querySelector('.btn-guardar-config');
+  const btnCancelar= row.querySelector('.btn-cancelar-config');
+
+  // Entrar a modo edición
+  if (btn.classList.contains('btn-editar-config')) {
+    viewCells.forEach(c => c.classList.add('d-none'));
+    editCell.classList.remove('d-none');
+    btnEditar.classList.add('d-none');
+    btnGuardar.classList.remove('d-none');
+    btnCancelar.classList.remove('d-none');
+    return;
+  }
+
+  // Cancelar edición
+  if (btn.classList.contains('btn-cancelar-config')) {
+    editCell.classList.add('d-none');
+    viewCells.forEach(c => c.classList.remove('d-none'));
+    btnEditar.classList.remove('d-none');
+    btnGuardar.classList.add('d-none');
+    btnCancelar.classList.add('d-none');
+    return;
+  }
+
+  // Guardar cambios (AJAX)
+  if (btn.classList.contains('btn-guardar-config')) {
+    const selInst   = row.querySelector('.sel-instrumento');
+    const selMet    = row.querySelector('.sel-metodo');
+    const selReac   = row.querySelector('.sel-reactivo');
+    const selUnidad = row.querySelector('.sel-unidad');
+
+    // Validación rápida cliente
+    const faltantes = [];
+    if (!selInst.value)   faltantes.push('Instrumento');
+    if (!selMet.value)    faltantes.push('Método Analítico');
+    if (!selReac.value)   faltantes.push('Reactivo');
+    if (!selUnidad.value) faltantes.push('Unidad de Medida');
+    if (faltantes.length) {
+      window.showGlobalMessage && window.showGlobalMessage('warning', 'Campos faltantes: ' + faltantes.join(', '));
+      return;
+    }
+
+    // POST
+    const url = row.dataset.updateUrl;
+    const fd = new FormData();
+    fd.append('instrumento_id', selInst.value);
+    fd.append('metodo_analitico_id', selMet.value);
+    fd.append('reactivo_id', selReac.value);
+    fd.append('unidad_de_medida_id', selUnidad.value);
+
+    // Deshabilitar mientras guarda
+    btn.disabled = true;
+    try{
+      const res = await fetch(url, {
+        method: 'POST',
+        body: fd,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': getCSRFToken()
+        },
+        credentials: 'same-origin'
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        // Actualizar vista de texto con lo seleccionado
+        row.querySelector('.cell-instrumento').textContent = selInst.options[selInst.selectedIndex].text;
+        row.querySelector('.cell-metodo').textContent      = selMet.options[selMet.selectedIndex].text;
+        row.querySelector('.cell-reactivo').textContent    = selReac.options[selReac.selectedIndex].text;
+        row.querySelector('.cell-unidad').textContent      = selUnidad.options[selUnidad.selectedIndex].text;
+
+        // Salir de edición
+        editCell.classList.add('d-none');
+        viewCells.forEach(c => c.classList.remove('d-none'));
+        btnEditar.classList.remove('d-none');
+        btnGuardar.classList.add('d-none');
+        btnCancelar.classList.add('d-none');
+
+        window.showGlobalMessage && window.showGlobalMessage('success', data.message || 'Configuración actualizada');
+      } else {
+        window.showGlobalMessage && window.showGlobalMessage('danger', data.error || 'No se pudo actualizar la configuración');
+      }
+    } catch(e) {
+      window.showGlobalMessage && window.showGlobalMessage('danger', 'Error de conexión');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+});
+</script>

@@ -1,6 +1,8 @@
 from django.contrib import admin, messages
 from django.apps import apps
 from django.db import transaction
+from .models import PropiedadARevisar
+from .utils.propuestas import materializar_propuesta
 
 # Import only what we need for the custom logic
 from .models import Laboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig
@@ -11,7 +13,8 @@ lab_app = apps.get_app_config('lab')
 # Add ProgramaLaboratorio to the excluded list so we can register it with a custom admin below.
 excluded_models = {
     'LogEntry', 'Permission', 'Groups', 'Session', 'ContentType',
-    'ProgramaLaboratorio', 'Laboratorio', 'LaboratorioPruebaConfig', 'ProgramaLaboratorio'  # <-- handled manually below
+    'ProgramaLaboratorio', 'Laboratorio', 'LaboratorioPruebaConfig', 'ProgramaLaboratorio',
+    'PropiedadARevisar' # <-- handled manually below
 }
 
 for model in apps.get_models():
@@ -108,3 +111,47 @@ class LaboratorioAdmin(admin.ModelAdmin):
 class LaboratorioPruebaConfigAdmin(admin.ModelAdmin):
     list_display = ("laboratorio_id", "prueba_id", "instrumento_id", "metodo_analitico_id", "reactivo_id", "unidad_de_medida_id", "bloqueada")
     list_editable = ("bloqueada",)  # editable en la lista para rapidez  # [9][19]
+
+# ------------ 4) Custom admin for PropiedadARevisar with action to approve and materialize ------------
+@admin.register(PropiedadARevisar)
+class PropiedadARevisarAdmin(admin.ModelAdmin):
+    list_display  = ("tipoElemento", "valor", "status", "created_at")
+    list_filter   = ("status", "tipoElemento", "created_at")
+    search_fields = ("valor", "descripcion")
+    actions       = ["aprobar_y_materializar"]
+
+    @admin.action(description="Approve and materialize selected proposals")
+    @transaction.atomic
+    def aprobar_y_materializar(self, request, queryset):
+        aprobadas = 0
+        creadas   = 0
+        for prop in queryset.select_for_update():
+            # Aprobar si no lo está
+            if prop.status != 1:
+                prop.status = 1  # Aprobado
+                prop.save(update_fields=["status"])
+                aprobadas += 1
+            # Crear en tabla maestra (idempotente)
+            creado = materializar_propuesta(prop)
+            if creado:
+                creadas += 1
+        self.message_user(
+            request,
+            f"Propuestas aprobadas: {aprobadas}. Registros creados/confirmados en tablas maestras: {creadas}.",
+            level=messages.SUCCESS
+        )
+    # Cubrir el caso de edición individual en el admin
+    @transaction.atomic
+    def save_model(self, request, obj, form, change):
+        previo = None
+        if change:
+            try:
+                previo = PropiedadARevisar.objects.get(pk=obj.pk)
+            except PropiedadARevisar.DoesNotExist:
+                previo = None
+
+        super().save_model(request, obj, form, change)
+
+        # Si cambió a Aprobado (1), materializar
+        if obj.status == 1 and (not previo or previo.status != 1):
+            materializar_propuesta(obj)

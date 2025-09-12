@@ -1,14 +1,57 @@
-<tr>
-  <td>{{ config.prueba_id.nombre }}</td>
-  <td>{% if config.instrumento_id %}{{ config.instrumento_id.nombre }}{% else %}-{% endif %}</td>
-  <td>{% if config.metodo_analitico_id %}{{ config.metodo_analitico_id.nombre }}{% else %}-{% endif %}</td>
-  <td>{% if config.reactivo_id %}{{ config.reactivo_id.nombre }}{% else %}-{% endif %}</td>
-  <td>{% if config.unidad_de_medida_id %}{{ config.unidad_de_medida_id.nombre }}{% else %}-{% endif %}</td>
-  <td>
-    {% if laboratorio.override_edicion_activa or today|date:"j" <= laboratorio.edicion_hasta_dia and not config.bloqueada %}
-      <button class="btn btn-sm btn-primary btn-editar-config" data-config-id="{{ config.id }}">Editar</button>
+<tr class="config-row"
+    data-config-id="{{ config.id }}"
+    data-update-url="{% url 'lab:update_config' config.id %}">
+  <td class="cell-prueba">{{ config.prueba_id.nombre }}</td>
+
+  <td class="cell-view cell-instrumento">{{ config.instrumento_id.nombre|default:"-" }}</td>
+  <td class="cell-view cell-metodo">{{ config.metodo_analitico_id.nombre|default:"-" }}</td>
+  <td class="cell-view cell-reactivo">{{ config.reactivo_id.nombre|default:"-" }}</td>
+  <td class="cell-view cell-unidad">{{ config.unidad_de_medida_id.nombre|default:"-" }}</td>
+
+  <td class="cell-edit d-none">
+    <div class="row g-2">
+      <div class="col">
+        <select class="form-select sel-instrumento" name="instrumento_id">
+          <option value="">Seleccionar</option>
+          {% for inst in instrumentos %}
+            <option value="{{ inst.id }}" {% if config.instrumento_id and config.instrumento_id.id == inst.id %}selected{% endif %}>{{ inst.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col">
+        <select class="form-select sel-metodo" name="metodo_analitico_id">
+          <option value="">Seleccionar</option>
+          {% for m in metodos %}
+            <option value="{{ m.id }}" {% if config.metodo_analitico_id and config.metodo_analitico_id.id == m.id %}selected{% endif %}>{{ m.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col">
+        <select class="form-select sel-reactivo" name="reactivo_id">
+          <option value="">Seleccionar</option>
+          {% for r in reactivos %}
+            <option value="{{ r.id }}" {% if config.reactivo_id and config.reactivo_id.id == r.id %}selected{% endif %}>{{ r.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col">
+        <select class="form-select sel-unidad" name="unidad_de_medida_id">
+          <option value="">Seleccionar</option>
+          {% for u in unidades %}
+            <option value="{{ u.id }}" {% if config.unidad_de_medida_id and config.unidad_de_medida_id.id == u.id %}selected{% endif %}>{{ u.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </td>
+
+  <td class="cell-actions">
+    {% if can_edit %}
+      <button type="button" class="btn btn-primary btn-sm btn-editar-config">Editar</button>
+      <button type="button" class="btn btn-success btn-sm btn-guardar-config d-none">Guardar</button>
+      <button type="button" class="btn btn-light btn-sm btn-cancelar-config d-none">Cancelar</button>
     {% else %}
-      <button class="btn btn-sm btn-secondary" disabled>Edición bloqueada</button>
+      <button class="btn btn-secondary btn-sm" disabled>Edición bloqueada</button>
     {% endif %}
   </td>
 </tr>
