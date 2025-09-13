@@ -2,7 +2,6 @@
     data-config-id="{{ config.id }}"
     data-update-url="{% url 'lab:update_config' config.id %}">
   <td class="cell-prueba">{{ config.prueba_id.nombre }}</td>
-
   <td class="cell-view cell-instrumento">{{ config.instrumento_id.nombre|default:"-" }}</td>
   <td class="cell-view cell-metodo">{{ config.metodo_analitico_id.nombre|default:"-" }}</td>
   <td class="cell-view cell-reactivo">{{ config.reactivo_id.nombre|default:"-" }}</td>
@@ -47,9 +46,17 @@
 
   <td class="cell-actions">
     {% if can_edit %}
-      <button type="button" class="btn btn-primary btn-sm btn-editar-config">Editar</button>
-      <button type="button" class="btn btn-success btn-sm btn-guardar-config d-none">Guardar</button>
-      <button type="button" class="btn btn-light btn-sm btn-cancelar-config d-none">Cancelar</button>
+      <button type="button"
+              class="btn btn-primary btn-sm btn-raise btn-open-edit-modal"
+              data-bs-toggle="modal"
+              data-bs-target="#editConfigModal"
+              data-config-id="{{ config.id }}"
+              data-inst-id="{{ config.instrumento_id.id|default_if_none:'' }}"
+              data-met-id="{{ config.metodo_analitico_id.id|default_if_none:'' }}"
+              data-reac-id="{{ config.reactivo_id.id|default_if_none:'' }}"
+              data-uni-id="{{ config.unidad_de_medida_id.id|default_if_none:'' }}">
+        Editar
+      </button>
     {% else %}
       <button class="btn btn-secondary btn-sm" disabled>Edición bloqueada</button>
     {% endif %}

@@ -1,20 +1,19 @@
 {% load static %}
-<div class="container mt-4">
-  <h2>Configuraciones de Pruebas del Laboratorio</h2>
+<div class="container mt-4 text-body">
+  <h2 class="mb-4">Configuraciones de Pruebas del Laboratorio</h2>
 
   {% if messages %}
-  <div>
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-  </div>
+    <div>
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} mb-3">{{ message }}</div>
+      {% endfor %}
+    </div>
   {% endif %}
 
-  <!-- Contenedor de mensajes AJAX (después del bloque de mensajes de Django) -->
-  <div id="ajax-messages"></div>
+  <!-- Contenedor de mensajes AJAX -->
+  <div id="ajax-messages" class="mb-3"></div>
   <script>
     window.showGlobalMessage = function(type, text) {
-      // type: 'success' | 'danger' | 'info' | 'warning'
       const box = document.getElementById('ajax-messages');
       if (!box) return;
       const alert = document.createElement('div');
@@ -23,86 +22,86 @@
       box.innerHTML = '';
       box.appendChild(alert);
       setTimeout(() => { if (alert.parentNode) alert.remove(); }, 6000);
-    }
+    };
   </script>
 
   <!-- Pruebas pendientes -->
-  <h4>Pruebas pendientes por configurar</h4>
-  {% if pending_pruebas %}
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Prueba</th>
-        <th>Instrumento</th>
-        <th>Método</th>
-        <th>Reactivo</th>
-        <th>Unidad de Medida</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for prueba in pending_pruebas %}
-        {% include "partials/_crear_config_prueba_row.html" with prueba=prueba %}
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p>No hay pruebas pendientes.</p>
-  {% endif %}
-
-  <hr />
-
-  <!-- Configuraciones aceptadas -->
-  <h4>Pruebas configuradas</h4>
-  {% if accepted_configs_wrapped  %}
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th>Prueba</th>
-        <th>Instrumento</th>
-        <th>Método</th>
-        <th>Reactivo</th>
-        <th>Unidad</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in accepted_configs_wrapped %}
-        {% with config=row.obj can_edit=row.can_edit %}
-          {% include "partials/_config_row.html" with config=config can_edit=can_edit %}
-        {% endwith %}
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p>No hay configuraciones aceptadas.</p>
-  {% endif %}
-
-  <hr />
-
-  <!-- Propuestas -->
-  <h4>Propuestas de propiedades</h4>
-  <div id="propuestas-wrapper">
-    {% if propuestas %}
-    <table id="tabla-propuestas" class="table table-hover">
-      <thead>
+  <h4 class="mb-3">Pruebas pendientes por configurar</h4>
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead class="table-light">
         <tr>
-          <th>Tipo</th>
-          <th>Valor</th>
-          <th>Descripción</th>
-          <th>Status</th>
+          <th>Prueba</th>
+          <th>Instrumento</th>
+          <th>Método</th>
+          <th>Reactivo</th>
+          <th>Unidad de Medida</th>
+          <th>Acciones</th>
         </tr>
       </thead>
-      <tbody id="propuestas-body">
-        {% for prop in propuestas %}
-          {% include "partials/_propuesta_row.html" with prop=prop %}
+      <tbody>
+        {% for prueba in pending_pruebas %}
+          {% include "partials/_crear_config_prueba_row.html" with prueba=prueba %}
         {% endfor %}
       </tbody>
     </table>
+  </div>
+  {% if not pending_pruebas %}
+    <p class="text-muted">No hay pruebas pendientes.</p>
+  {% endif %}
+
+  <hr class="my-4" />
+
+  <!-- Pruebas configuradas -->
+  <h4 class="mb-3">Pruebas configuradas</h4>
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Prueba</th>
+          <th>Instrumento</th>
+          <th>Método</th>
+          <th>Reactivo</th>
+          <th>Unidad</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in accepted_configs_wrapped %}
+          {% include "partials/_config_row.html" with config=row.obj can_edit=row.can_edit %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not accepted_configs_wrapped %}
+    <p class="text-muted">No hay configuraciones aceptadas.</p>
+  {% endif %}
+
+  <hr class="my-4" />
+
+  <!-- Propuestas -->
+  <h4 class="mb-3">Propuestas de propiedades</h4>
+  <div id="propuestas-wrapper" class="table-responsive">
+    {% if propuestas %}
+      <table id="tabla-propuestas" class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Tipo</th>
+            <th>Valor</th>
+            <th>Descripción</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="propuestas-body">
+          {% for prop in propuestas %}
+            {% include "partials/_propuesta_row.html" with prop=prop %}
+          {% endfor %}
+        </tbody>
+      </table>
     {% else %}
-      <p id="sin-propuestas">No hay propuestas registradas.</p>
-      <table id="tabla-propuestas" class="table table-hover" style="display:none;">
-        <thead>
+      <p id="sin-propuestas" class="text-muted">No hay propuestas registradas.</p>
+      <table id="tabla-propuestas" class="table table-hover align-middle" style="display:none;">
+        <thead class="table-light">
           <tr>
             <th>Tipo</th>
             <th>Valor</th>
@@ -115,8 +114,179 @@
     {% endif %}
   </div>
 
+  <!-- Modal Editar Configuración -->
+  <div class="modal fade" id="editConfigModal" tabindex="-1" aria-labelledby="editConfigLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editConfigLabel">Editar configuración</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editConfigForm" autocomplete="off">
+            {% csrf_token %}
+            <input type="hidden" name="config_id" id="ec-config-id">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Instrumento</label>
+                <select class="form-select" name="instrumento_id" id="ec-inst">
+                  <option value="">Seleccionar</option>
+                  {% for inst in instrumentos %}
+                    <option value="{{ inst.id }}">{{ inst.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Método analítico</label>
+                <select class="form-select" name="metodo_analitico_id" id="ec-met">
+                  <option value="">Seleccionar</option>
+                  {% for m in metodos %}
+                    <option value="{{ m.id }}">{{ m.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Reactivo</label>
+                <select class="form-select" name="reactivo_id" id="ec-reac">
+                  <option value="">Seleccionar</option>
+                  {% for r in reactivos %}
+                    <option value="{{ r.id }}">{{ r.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Unidad de medida</label>
+                <select class="form-select" name="unidad_de_medida_id" id="ec-uni">
+                  <option value="">Seleccionar</option>
+                  {% for u in unidades %}
+                    <option value="{{ u.id }}">{{ u.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <div class="me-auto small text-muted" id="ec-status"></div>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-raise" id="ec-save-btn">
+            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            Guardar cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
+
+
+<script>
+(function(){
+  // Helpers CSRF (Django)
+  function getCookie(name) {
+    let v = null;
+    if (document.cookie && document.cookie !== '') {
+      const cs = document.cookie.split(';');
+      for (let i=0;i<cs.length;i++){
+        const c = cs[i].trim();
+        if (c.substring(0, name.length + 1) === (name + '=')) {
+          v = decodeURIComponent(c.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return v;
+  }
+  function getCSRFToken(){ return getCookie('csrftoken') || (document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''); }
+
+  const modalEl = document.getElementById('editConfigModal');
+  const form    = document.getElementById('editConfigForm');
+  const saveBtn = document.getElementById('ec-save-btn');
+  const status  = document.getElementById('ec-status');
+  let currentRow = null;
+
+  // Abrir modal y precargar
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('.btn-open-edit-modal');
+    if (!btn) return;
+    const configId = btn.getAttribute('data-config-id');
+    const instId   = btn.getAttribute('data-inst-id') || '';
+    const metId    = btn.getAttribute('data-met-id')  || '';
+    const reacId   = btn.getAttribute('data-reac-id') || '';
+    const uniId    = btn.getAttribute('data-uni-id')  || '';
+
+    // Guardar fila actual
+    currentRow = btn.closest('.config-row');
+
+    // Cargar valores al modal
+    document.getElementById('ec-config-id').value = configId;
+    document.getElementById('ec-inst').value = instId;
+    document.getElementById('ec-met').value  = metId;
+    document.getElementById('ec-reac').value = reacId;
+    document.getElementById('ec-uni').value  = uniId;
+
+    status.textContent = '';
+  });
+
+  // Guardar cambios
+  saveBtn.addEventListener('click', async function(){
+    if (!currentRow) return;
+
+    const url = currentRow.dataset.updateUrl;
+    const fd  = new FormData(form);
+    // Validación mínima
+    const faltantes = [];
+    if (!fd.get('instrumento_id'))        faltantes.push('Instrumento');
+    if (!fd.get('metodo_analitico_id'))   faltantes.push('Método Analítico');
+    if (!fd.get('reactivo_id'))           faltantes.push('Reactivo');
+    if (!fd.get('unidad_de_medida_id'))   faltantes.push('Unidad de Medida');
+    if (faltantes.length) {
+      status.textContent = 'Campos faltantes: ' + faltantes.join(', ');
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.querySelector('.spinner-border').classList.remove('d-none');
+    try{
+      const res = await fetch(url, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With':'XMLHttpRequest' },
+        credentials: 'same-origin'
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        // Refrescar textos en la fila
+        const instSel = document.getElementById('ec-inst');
+        const metSel  = document.getElementById('ec-met');
+        const reacSel = document.getElementById('ec-reac');
+        const uniSel  = document.getElementById('ec-uni');
+
+        currentRow.querySelector('.cell-instrumento').textContent = instSel.options[instSel.selectedIndex].text;
+        currentRow.querySelector('.cell-metodo').textContent      = metSel.options[metSel.selectedIndex].text;
+        currentRow.querySelector('.cell-reactivo').textContent    = reacSel.options[reacSel.selectedIndex].text;
+        currentRow.querySelector('.cell-unidad').textContent      = uniSel.options[uniSel.selectedIndex].text;
+
+        // Cerrar modal
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.hide();
+        // Limpiar estado
+        status.textContent = '';
+      } else {
+        status.textContent = data.error || 'No se pudo actualizar la configuración';
+      }
+    } catch(err) {
+      status.textContent = 'Error de conexión';
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.querySelector('.spinner-border').classList.add('d-none');
+    }
+  });
+})();
+</script>
 <script>
 // CSRF helpers (Django)
 function getCookie(name) {

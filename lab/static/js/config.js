@@ -62,3 +62,42 @@
         }
     }
 })();
+
+// Manejar el cambio de tema claro/oscuro
+(function () {
+  var html = document.documentElement;
+
+  // Lee el tema desde localStorage unificado
+  var savedTheme = localStorage.getItem('bs-theme') || 'light';
+
+  // Función para aplicar el modo y sincronizar atributos y clases
+  function applyTheme(mode) {
+    html.removeAttribute('data-theme');
+    document.body.removeAttribute('data-theme');
+    html.classList.remove('dark');
+    document.body.classList.remove('dark');
+
+    html.setAttribute('data-bs-theme', mode);
+    html.setAttribute('data-mode', mode);
+
+    if (mode === 'dark') {
+      html.classList.add('dark');
+    }
+    localStorage.setItem('bs-theme', mode);
+    window.config = window.config || {};
+    window.config.theme = mode;
+  }
+
+  // Aplica tema guardado inicialmente
+  applyTheme(savedTheme);
+
+  // Listener del botón toggle con id 'light-dark-mode'
+  var toggleBtn = document.getElementById('light-dark-mode');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function () {
+      var current = html.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+      var next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    });
+  }
+})();

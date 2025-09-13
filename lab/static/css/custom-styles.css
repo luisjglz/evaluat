@@ -1,3 +1,4 @@
+
 .resultadoestudio {
     text-align: right;
 }
@@ -208,4 +209,187 @@ main{
 .rescont{
     display: flex;
     justify-content: center;
+}
+
+/* =========================
+   Animaciones y utilidades
+   ========================= */
+.btn-raise {
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn-raise:hover,
+.btn-raise:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+}
+
+/* Suavizado para alerts */
+.alert {
+  transition: opacity .2s ease;
+}
+
+/* =========================
+   Tema CLARO (Light)
+   ========================= */
+html[data-bs-theme="light"] {
+  --bs-body-bg: #ffffff;
+  --bs-body-color: #212529;        /* Texto principal */
+  --bs-heading-color: #212529;
+  --bs-link-color: #0d6efd;
+  --bs-border-color: #dee2e6;
+}
+
+html[data-bs-theme="light"] body,
+html[data-bs-theme="light"] .text-body {
+  color: #212529 !important;
+  background-color: #ffffff;
+}
+
+/* Tablas: fondo y texto correctos + hover legible */
+html[data-bs-theme="light"] .table {
+  --bs-table-bg: #ffffff;
+  --bs-table-color: #212529;
+  --bs-table-striped-bg: rgba(0,0,0,.05);
+  --bs-table-hover-bg: rgba(0,0,0,.075);
+  background-color: var(--bs-table-bg) !important;
+  color: var(--bs-table-color) !important;
+}
+html[data-bs-theme="light"] .table thead.table-light th {
+  background-color: #f8f9fa !important;
+  color: #212529 !important;
+}
+html[data-bs-theme="light"] .table-hover > tbody > tr:hover > * {
+  color: #212529 !important;
+}
+/* Por si alguna tabla tiene .table-dark por error */
+html[data-bs-theme="light"] .table.table-dark {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+}
+
+/* Botones: estado base sólido (no solo hover) */
+html[data-bs-theme="light"] .btn-primary,
+html[data-bs-theme="light"] .btn-open-edit-modal {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+  color: #fff !important;
+}
+html[data-bs-theme="light"] .btn-primary:hover,
+html[data-bs-theme="light"] .btn-open-edit-modal:hover {
+  background-color: #0b5ed7 !important;
+  border-color: #0a58ca !important;
+  color: #fff !important;
+}
+
+html[data-bs-theme="light"] .btn-success,
+html[data-bs-theme="light"] .btn-aceptar-config,
+html[data-bs-theme="light"] #ec-save-btn {
+  background-color: #198754 !important;
+  border-color: #198754 !important;
+  color: #fff !important;
+}
+html[data-bs-theme="light"] .btn-success:hover,
+html[data-bs-theme="light"] .btn-aceptar-config:hover,
+html[data-bs-theme="light"] #ec-save-btn:hover {
+  background-color: #157347 !important;
+  border-color: #146c43 !important;
+  color: #fff !important;
+}
+
+/* Outline secundarios legibles en claro */
+html[data-bs-theme="light"] .btn-outline-secondary {
+  color: #212529 !important;
+  border-color: #6c757d !important;
+}
+html[data-bs-theme="light"] .btn-outline-secondary:hover {
+  background-color: #f8f9fa !important;
+  color: #212529 !important;
+  border-color: #6c757d !important;
+}
+
+/* Foco accesible en claro */
+html[data-bs-theme="light"] .btn:focus {
+  box-shadow: 0 0 0 .2rem rgba(13,110,253,.25) !important;
+}
+
+/* Elevación sutil para no “perderse” en claro */
+html[data-bs-theme="light"] .btn-raise {
+  box-shadow: 0 .25rem .75rem rgba(0,0,0,.15);
+}
+
+/* =========================
+   Tema OSCURO (Dark)
+   ========================= */
+html[data-bs-theme="dark"] {
+  --bs-body-bg: #101214;
+  --bs-body-color: #dee2e6;
+  --bs-link-color: #9ec5fe;
+  --bs-border-color: rgba(255,255,255,.1);
+}
+
+html[data-bs-theme="dark"] body,
+html[data-bs-theme="dark"] .text-body {
+  color: var(--bs-body-color);
+  background-color: var(--bs-body-bg);
+}
+
+/* Tablas en oscuro */
+html[data-bs-theme="dark"] .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--bs-body-color);
+  background-color: var(--bs-table-bg) !important;
+  color: var(--bs-table-color) !important;
+}
+html[data-bs-theme="dark"] .table-hover > tbody > tr:hover > * {
+  background-color: rgba(255,255,255,.05);
+  color: var(--bs-body-color) !important;
+}
+html[data-bs-theme="dark"] .table thead.table-light th {
+  background-color: rgba(255,255,255,.05);
+  color: var(--bs-body-color) !important;
+}
+
+/* Botones en oscuro (estado base y hover) */
+html[data-bs-theme="dark"] .btn-primary,
+html[data-bs-theme="dark"] .btn-open-edit-modal {
+  background-color: #3d8bfd !important;
+  border-color: #3d8bfd !important;
+  color: #fff !important;
+}
+html[data-bs-theme="dark"] .btn-primary:hover,
+html[data-bs-theme="dark"] .btn-open-edit-modal:hover {
+  background-color: #1f6feb !important;
+  border-color: #1f6feb !important;
+  color: #fff !important;
+}
+
+html[data-bs-theme="dark"] .btn-success,
+html[data-bs-theme="dark"] .btn-aceptar-config,
+html[data-bs-theme="dark"] #ec-save-btn {
+  background-color: #198754 !important;
+  border-color: #198754 !important;
+  color: #fff !important;
+}
+html[data-bs-theme="dark"] .btn-success:hover,
+html[data-bs-theme="dark"] .btn-aceptar-config:hover,
+html[data-bs-theme="dark"] #ec-save-btn:hover {
+  background-color: #157347 !important;
+  border-color: #146c43 !important;
+  color: #fff !important;
+}
+
+/* Outline secundarios en oscuro */
+html[data-bs-theme="dark"] .btn-outline-secondary {
+  color: #dee2e6 !important;
+  border-color: #adb5bd !important;
+}
+html[data-bs-theme="dark"] .btn-outline-secondary:hover {
+  background-color: rgba(255,255,255,.1) !important;
+  color: #fff !important;
+  border-color: #ced4da !important;
+}
+
+/* Foco accesible en oscuro */
+html[data-bs-theme="dark"] .btn:focus {
+  box-shadow: 0 0 0 .2rem rgba(61,139,253,.35) !important;
 }
