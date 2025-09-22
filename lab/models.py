@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from datetime import date
 
 class Laboratorio(models.Model):
     nombre = models.CharField(max_length=255)
@@ -9,6 +10,10 @@ class Laboratorio(models.Model):
     edicion_hasta_dia = models.PositiveSmallIntegerField(default=15) # Con esto un admin puede cambiar el día límite (p.ej. 15),
     override_edicion_activa = models.BooleanField(default=False) # activar una excepción y opcionalmente fijar una fecha hasta cuándo aplica.
     override_edicion_hasta = models.DateField(null=True, blank=True)
+    estado = models.PositiveSmallIntegerField(
+        choices=[(1, "Configuración"), (2, "Registro"), (3, "Consulta")],
+        default=1
+    )
     
     def __str__(self):
         return self.nombre
@@ -139,6 +144,16 @@ class Dato(models.Model):
     prueba_id = models.ForeignKey(Prueba, on_delete=models.PROTECT, related_name='datos')
     valor = models.FloatField()
     fecha = models.DateTimeField(auto_now_add=True)
+    mes = models.DateField(default=lambda: date.today().replace(day=1))  # primer día del mes actual
+
+    class Meta:
+        constraints = [
+            # Restricción compuesta que evita duplicados por mes
+            models.UniqueConstraint(
+                fields=['laboratorio_id', 'prueba_id', 'mes'],
+                name='uq_dato_lab_prueba_mes'
+            )
+        ]
 
     def __str__(self):
         return f"{self.prueba_id} - {self.valor} - {self.fecha}"
