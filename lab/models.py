@@ -138,14 +138,22 @@ class LaboratorioPruebaConfig(models.Model):
             models.UniqueConstraint(fields=['laboratorio_id', 'prueba_id'], name='uq_laboratorio_prueba')
         ]
         verbose_name_plural = "LaboratorioPruebaConfig"
-    
+
+def first_day_of_current_month():
+    # usa zona horaria de Django y normaliza al día 1
+    return timezone.now().date().replace(day=1)
+
+
 class Dato(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='datos')
     prueba_id = models.ForeignKey(Prueba, on_delete=models.PROTECT, related_name='datos')
     valor = models.FloatField()
     fecha = models.DateTimeField(auto_now_add=True)
-    mes = models.DateField(default=lambda: date.today().replace(day=1))  # primer día del mes actual
+    mes = models.DateField(default=first_day_of_current_month)  # primer día del mes actual
 
+    def __str__(self):
+        return f"{self.prueba_id} - {self.valor} - {self.fecha}"
+    
     class Meta:
         constraints = [
             # Restricción compuesta que evita duplicados por mes
@@ -155,8 +163,6 @@ class Dato(models.Model):
             )
         ]
 
-    def __str__(self):
-        return f"{self.prueba_id} - {self.valor} - {self.fecha}"
 
 class KitDeReactivos(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='kits_de_reactivos')
