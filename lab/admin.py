@@ -103,9 +103,12 @@ class ProgramaLaboratorioAdmin(admin.ModelAdmin):
 # ------------ 3) Custom admin for Laboratorio to manage override flags for editing the configurations ------------
 @admin.register(Laboratorio)
 class LaboratorioAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "edicion_hasta_dia", "override_edicion_activa", "override_edicion_hasta")
-    fields = ("nombre", "clave", "edicion_hasta_dia", "override_edicion_activa", "override_edicion_hasta")
-    # Admin estándar para alternar bandera y fecha límite de override.  # [9]
+    list_display = ("id", "nombre", "clave", "estado", "edicion_hasta_dia", "corte_captura_dia", "override_edicion_activa", "override_edicion_hasta", "override_captura_activa", "override_captura_hasta")
+    list_editable = ("estado",)
+    list_filter = ("estado", "override_edicion_activa", "override_captura_activa")
+    search_fields = ("nombre", "clave")
+    fields = ("nombre", "clave", "estado", "edicion_hasta_dia", "corte_captura_dia", "override_edicion_activa", "override_edicion_hasta", "override_captura_activa", "override_captura_hasta")
+
 
 @admin.register(LaboratorioPruebaConfig)
 class LaboratorioPruebaConfigAdmin(admin.ModelAdmin):

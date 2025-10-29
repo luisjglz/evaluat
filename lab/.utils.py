@@ -11,3 +11,4 @@ def puede_editar_config(laboratorio, config):
     )
     bloqueo_por_config = getattr(config, "bloqueada", False)
     return (dentro_de_ventana or override_activo) and not bloqueo_por_config  # [1][9]
+

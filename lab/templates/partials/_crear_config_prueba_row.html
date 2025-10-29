@@ -3,89 +3,69 @@
 
   <!-- Instrumento -->
   <td>
-    <div class="campo-instrumento">
+    <div class="campo-instrumento d-flex gap-2">
       <select name="instrumento_id" class="form-select campo-select" required>
         <option value="">Seleccionar</option>
         {% for inst in instrumentos %}
           <option value="{{ inst.id }}">{{ inst.nombre }}</option>
         {% endfor %}
       </select>
-      <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer-instrumento mt-1">Proponer instrumento</button>
-
-      <div class="propuesta-instrumento mt-2" style="display:none;">
-        <input type="text" name="instrumento_valor" class="form-control" placeholder="Nuevo instrumento">
-        <textarea name="instrumento_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
-        <button type="button" class="btn btn-warning btn-sm mt-1 btn-confirmar-propuesta" data-tipo="instrumento">Proponer</button>
-        <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-instrumento">Cancelar</button>
-      </div>
-
-      <div class="error-message text-danger small mt-1" style="display:none;"></div>
+      <button type="button"
+              class="btn btn-outline-secondary btn-sm btn-proponer"
+              data-prop-tipo="instrumento">
+        Proponer
+      </button>
     </div>
   </td>
 
   <!-- Método -->
   <td>
-    <div class="campo-metodo">
+    <div class="campo-metodo d-flex gap-2">
       <select name="metodo_analitico_id" class="form-select campo-select" required>
         <option value="">Seleccionar</option>
         {% for met in metodos %}
           <option value="{{ met.id }}">{{ met.nombre }}</option>
         {% endfor %}
       </select>
-      <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer-metodo mt-1">Proponer método</button>
-
-      <div class="propuesta-metodo mt-2" style="display:none;">
-        <input type="text" name="metodo_valor" class="form-control" placeholder="Nuevo método">
-        <textarea name="metodo_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
-        <button type="button" class="btn btn-warning btn-sm mt-1 btn-confirmar-propuesta" data-tipo="metodo">Proponer</button>
-        <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-metodo">Cancelar</button>
-      </div>
-
-      <div class="error-message text-danger small mt-1" style="display:none;"></div>
+      <button type="button"
+              class="btn btn-outline-secondary btn-sm btn-proponer"
+              data-prop-tipo="metodo">
+        Proponer
+      </button>
     </div>
   </td>
 
   <!-- Reactivo -->
   <td>
-    <div class="campo-reactivo">
+    <div class="campo-reactivo d-flex gap-2">
       <select name="reactivo_id" class="form-select campo-select" required>
         <option value="">Seleccionar</option>
         {% for reac in reactivos %}
           <option value="{{ reac.id }}">{{ reac.nombre }}</option>
         {% endfor %}
       </select>
-      <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer-reactivo mt-1">Proponer reactivo</button>
-
-      <div class="propuesta-reactivo mt-2" style="display:none;">
-        <input type="text" name="reactivo_valor" class="form-control" placeholder="Nuevo reactivo">
-        <textarea name="reactivo_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
-        <button type="button" class="btn btn-warning btn-sm mt-1 btn-confirmar-propuesta" data-tipo="reactivo">Proponer</button>
-        <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-reactivo">Cancelar</button>
-      </div>
-
-      <div class="error-message text-danger small mt-1" style="display:none;"></div>
+      <button type="button"
+              class="btn btn-outline-secondary btn-sm btn-proponer"
+              data-prop-tipo="reactivo">
+        Proponer
+      </button>
     </div>
   </td>
 
   <!-- Unidad -->
   <td>
-    <div class="campo-unidad">
+    <div class="campo-unidad d-flex gap-2">
       <select name="unidad_de_medida_id" class="form-select campo-select" required>
         <option value="">Seleccionar</option>
         {% for uni in unidades %}
           <option value="{{ uni.id }}">{{ uni.nombre }}</option>
         {% endfor %}
       </select>
-      <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer-unidad mt-1">Proponer unidad</button>
-
-      <div class="propuesta-unidad mt-2" style="display:none;">
-        <input type="text" name="unidad_valor" class="form-control" placeholder="Nueva unidad">
-        <textarea name="unidad_descripcion" class="form-control mt-1" placeholder="Descripción (opcional)"></textarea>
-        <button type="button" class="btn btn-warning btn-sm mt-1 btn-confirmar-propuesta" data-tipo="unidad">Proponer</button>
-        <button type="button" class="btn btn-light btn-sm mt-1 btn-cancelar-unidad">Cancelar</button>
-      </div>
-
-      <div class="error-message text-danger small mt-1" style="display:none;"></div>
+      <button type="button"
+              class="btn btn-outline-secondary btn-sm btn-proponer"
+              data-prop-tipo="unidad">
+        Proponer
+      </button>
     </div>
   </td>
 

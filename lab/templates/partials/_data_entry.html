@@ -1,0 +1,505 @@
+<div class="container mt-4">
+  <h4>Registro de datos - {{ lab.nombre }}</h4>
+
+  <form id="form-datos" method="post" action="{% url 'lab:lab_data_entry' %}">
+    {% csrf_token %}
+    <div class="row g-3 align-items-end">
+      <div class="col-auto">
+        <label class="form-label">Mes</label>
+        <input type="month" class="form-control" value="{{ today|date:'Y-m' }}" disabled>
+        <input type="hidden" name="mes_ui" value="{{ today|date:'Y-m' }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-success">Guardar cambios</button>
+      </div>
+      <div class="col-auto">
+        <button type="button" class="btn btn-outline-primary" id="btn-pegar-columna">Pegar columna</button>
+        <!-- Aviso contextual junto al botón (fallback) -->
+        <div id="paste-hint" class="paste-hint d-none">Presiona Ctrl+V (⌘+V en Mac) para pegar, luego suelta.</div>
+
+        <style>
+          /* Aviso animado que emerge desde el botón */
+          .paste-hint {
+            position: absolute;
+            transform: translateY(8px);
+            right: 0;
+            background: #fff3cd;
+            color: #664d03;
+            border: 1px solid #ffecb5;
+            border-radius: .375rem;
+            padding: .5rem .75rem;
+            box-shadow: 0 4px 14px rgba(0,0,0,.12);
+            animation: riseIn .22s ease-out forwards;
+            z-index: 1060;
+          }
+          @keyframes riseIn {
+            from { opacity: .0; transform: translateY(12px); }
+            to   { opacity: 1;  transform: translateY(-4px); }
+          }
+          /* Resaltados por resultado */
+          .pasted-ok {
+            outline: 2px solid rgba(25,135,84,.9);
+            outline-offset: 2px;
+            transition: outline-color .2s ease;
+          }
+          .pasted-bad {
+            outline: 2px solid rgba(220,53,69,.9);
+            outline-offset: 2px;
+            transition: outline-color .2s ease;
+          }
+          .pasted-missed {
+            outline: 2px dashed rgba(255,193,7,.9);
+            outline-offset: 2px;
+            transition: outline-color .2s ease;
+          }
+
+          :root[data-bs-theme="dark"] .form-control {
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            border-color: var(--bs-border-color);
+          }
+          :root[data-bs-theme="dark"] .form-control::placeholder { color: rgba(255,255,255,.6); }
+          :root[data-bs-theme="dark"] .pasted-ok { outline-color: #198754; }
+          :root[data-bs-theme="dark"] .pasted-bad { outline-color: #dc3545; }
+          :root[data-bs-theme="dark"] .pasted-missed { outline-color: #ffc107; }
+
+          
+          /* :root[data-bs-theme="dark"] .form-control {
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            border-color: var(--bs-border-color);
+          }
+          :root[data-bs-theme="dark"] .form-control::placeholder {
+            color: rgba(255,255,255,.6);
+          }
+          :root[data-bs-theme="dark"] .pasted-ok  { outline-color: #198754; }
+          :root[data-bs-theme="dark"] .pasted-bad { outline-color: #dc3545; }
+          :root[data-bs-theme="dark"] .pasted-missed { outline-color: #ffc107; } */
+          
+        </style>
+
+      </div>
+    </div>
+
+    {% for grupo in programas %}
+      <h5 class="mt-4">{{ grupo.programa.nombre }}</h5>
+      <div class="table-responsive">
+        <table class="table table-sm tabla-programa">
+          <thead>
+            <tr><th>Prueba</th><th>Valor</th><th>Unidad</th></tr>
+          </thead>
+          <tbody>
+            {% for fila in grupo.filas %}
+            <tr>
+              <td>{{ fila.prueba.nombre }}</td>
+              <td style="max-width:240px">
+                <input
+                  type="number"
+                  step="any"
+                  inputmode="decimal"
+                  pattern="[0-9]+([\\.,][0-9]+)?"
+                  class="form-control valor-input"
+                  name="valor_{{ fila.prueba.id }}"
+                  placeholder="Valor">
+              </td>
+              <td>{{ fila.unidad }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+  <!-- Reemplaza el bloque del <form> posterior (antes de </form>) por este modal, estilos y script: -->
+</form>
+
+
+</div>
+<!-- MODAL refinado -->
+<div id="modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="modal-title"
+     style="display:none; position:fixed; inset:0; z-index:1050; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+  <div id="modal-dialog"
+       style="min-width:300px; max-width:95vw; margin:auto; background:var(--modal-bg,#fff); color:var(--modal-fg,#222); border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,.2); transform:translateY(0) scale(1.05); transition:all .25s ease;">
+    <div id="modal-topbar" style="height:6px; border-top-left-radius:12px; border-top-right-radius:12px; background:var(--modal-topbar, #4cae4f);"></div>
+    <div style="padding:1.6rem;">
+      <h2 id="modal-title" style="margin:0;font-size:1.25rem;"></h2>
+      <div id="modal-body" style="margin-top:.6em;font-size:1.03rem;"></div>
+      <div style="text-align:right; margin-top:1.2em">
+        <button id="modal-close"
+                style="padding:.5em 1.2em; border-radius:6px; border:none; background:var(--modal-btn-bg,#eee); color:var(--modal-btn-fg,#222); box-shadow:0 1px 7px 0 rgba(0,0,0,0.06); font-size:1.02em; cursor:pointer;">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@media (prefers-color-scheme: dark) {
+  #modal-dialog {
+    --modal-bg: #242631;
+    --modal-fg: #eee;
+    --modal-btn-bg: #444;
+    --modal-btn-fg: #eee;
+  }
+}
+.input-invalid { border-color: #c00 !important; animation: shake 0.4s;}
+@keyframes shake { 10%,90%{transform:translateX(-1px);} 20%,80%{transform:translateX(2px);} 30%,50%,70%{transform:translateX(-4px);} 40%,60%{transform:translateX(4px);} }
+</style>
+<!-- Modal -->
+<script>
+(function(){
+function getCookie(name){const m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return m?m.pop():''}
+
+// Color config para estados
+const modalColors = {
+  error:   { topbar: "#c82333", bg: "#fff5f5", fg: "#7a0f1b", title: "Error", btnbg: "#fbeaec", btnfg: "#c82333" },
+  success: { topbar: "#2ecc40", bg: "#f3fff5", fg: "#155724", title: "Éxito", btnbg: "#e2f6e6", btnfg: "#228c3a" },
+  warn:    { topbar: "#ffcc00", bg: "#fffbea", fg: "#856404", title: "Alerta", btnbg: "#f7ecd8", btnfg: "#ba7d07" },
+};
+function setModalStyle(type) {
+  const c = modalColors[type] || modalColors.success;
+  document.getElementById('modal-topbar').style.background = c.topbar;
+  document.getElementById('modal-dialog').style.background = c.bg;
+  document.getElementById('modal-dialog').style.color = c.fg;
+  document.getElementById('modal-title').innerText = c.title;
+  document.getElementById('modal-close').style.background = c.btnbg;
+  document.getElementById('modal-close').style.color = c.btnfg;
+}
+function openModal(type, html){
+  setModalStyle(type);
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal').style.display='flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(){
+  document.getElementById('modal').style.display='none';
+  document.getElementById('modal-body').innerHTML='';
+  document.body.style.overflow = '';
+}
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+
+// Validación (shake) en inputs
+const allowedPattern = /^[0-9eE+\-.,]*$/;
+document.querySelectorAll('input[name^="valor_"]:not([disabled])').forEach(inp=>{
+  inp.addEventListener('beforeinput', (e)=>{
+    if(e.data && !allowedPattern.test(e.data)){
+      e.preventDefault();
+      inp.classList.remove('input-invalid'); void inp.offsetWidth; inp.classList.add('input-invalid');
+    }
+  });
+});
+
+// Guardado
+const form = document.querySelector('form');
+if(!form) return;
+form.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  // Acción debe ser data-entry!
+  let action = form.getAttribute('action') || "{% url 'lab:lab_data_entry' %}";
+  const fd = new FormData(form);
+  for (const [k, v] of Array.from(fd.entries())) {
+    if(k.startsWith('valor_') && (v===null || String(v).trim()==='')) fd.delete(k);
+  }
+  let modalType = "success", modalMsg = "", customTitle = "";
+  try {
+    const resp = await fetch(action, {
+      method: 'POST',
+      headers: {'X-CSRFToken': getCookie('csrftoken')},
+      credentials: 'same-origin',
+      body: fd
+    });
+    let data, content = resp.headers.get('content-type') || "";
+    if(content.includes("application/json")) {
+      data = await resp.json();
+    } else {
+      let txt = await resp.text();
+      modalType = "error";
+      modalMsg = "La respuesta del servidor no es válida. Inténtelo de nuevo.<br><pre style='font-size:10px;color:#888'>" + txt.substring(0,300) + "</pre>";
+      openModal(modalType, modalMsg);
+      return;
+    }
+    // Mensaje por tipo de respuesta
+    if(!resp.ok || data.success === false || data.errors && Object.keys(data.errors).length) {
+      modalType = "error";
+      let errSummary = Object.values(data.errors||{}).map(String).join("<br>");
+      modalMsg = "Algunos valores no se guardaron.<br>" + (errSummary ? "<span style='font-size:.97em;color:#b00'>" + errSummary + "</span>" : "");
+    }
+    else if(data.skipped_existing && data.skipped_existing.length && data.saved && data.saved.length) {
+      // Éxito y overwrite (yellow): Se guarda parcialmente y algunas ya existen
+      modalType = "warn";
+      modalMsg = `Se guardaron <b>${data.saved.length}</b>, ya existían <b>${data.skipped_existing.length}</b>.`;
+    }
+    else if(data.saved && data.saved.length) {
+      modalType = "success";
+      modalMsg = `¡${data.saved.length} datos guardados correctamente!`;
+    } else {
+      modalType = "warn";
+      modalMsg = "No se realizó ningún guardado nuevo porque ya existían todos los valores.";
+    }
+    openModal(modalType, modalMsg);
+    // Bloquear inputs guardados
+    (data.saved||[]).forEach(it=>{
+      const el=document.querySelector(`input[name="valor_${it.prueba_id}"]`);
+      if(el){ el.value=it.valor; el.setAttribute('disabled',''); }
+    });
+    // Redirección si cierra captura
+    if(data.closed) setTimeout(()=>{ window.location.href="{% url 'lab:labmainview' %}"; }, 2000);
+  } catch(err) {
+    openModal('error', 'Error de conexión con el servidor. Verifique su red.<br><pre style="font-size:85%;color:#b00">' + String(err).substring(0,150) + '</pre>');
+  }
+});
+})();
+</script>
+
+
+<!-- Pegado inteligente -->
+<script>
+(function(){
+  // Normaliza ',' -> '.' al teclear para admitir flotantes locales
+  document.addEventListener('input', function(e){
+    const t = e.target;
+    if (!t.classList || !t.classList.contains('valor-input')) return;
+    if (typeof t.value === 'string' && t.value.includes(',')) {
+      const caret = t.selectionStart;
+      t.value = t.value.replace(/,/g, '.');
+      try { t.setSelectionRange(caret, caret); } catch(_) {}
+    }
+  });
+
+  // Utilidades
+  const form = document.getElementById('form-datos');
+  function allValorInputs() {
+    return Array.from(form.querySelectorAll('.valor-input'));
+  }
+  function clearHighlights(inputs) {
+    for (const el of inputs) {
+      el.classList.remove('pasted-ok','pasted-bad','pasted-missed');
+    }
+  }
+  // Permite números decimales y notación científica
+  const sciRe = /^[+-]?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][+-]?\d+)?$/;
+
+  function tokenizeClipboard(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const tokens = [];
+    for (const line of lines) {
+      const cols = line.split(/\t|,|;/).map(s => s.trim());
+      for (const c of cols) if (c !== '') tokens.push(c);
+    }
+    return tokens;
+  }
+
+  function distributeValues(tokens, startIndex, opts) {
+    const { onlyEmpty=false, markMissed=false } = opts || {};
+    const inputs = allValorInputs();
+    clearHighlights(inputs);
+    let i = startIndex;
+    let assigned = 0;
+
+    // Asignar y validar token por token
+    for (const raw of tokens) {
+      if (i >= inputs.length) break;
+      if (onlyEmpty && inputs[i].value) { i++; continue; }
+
+      const normalized = raw.replace(',', '.');
+      // Validar contra regex de número o notación científica
+      const ok = sciRe.test(normalized);
+
+      if (ok) {
+        inputs[i].value = normalized;
+        inputs[i].classList.add('pasted-ok');
+        assigned++;
+      } else {
+        // No asignar valor inválido; marcar en rojo
+        inputs[i].classList.add('pasted-bad');
+      }
+      i++;
+    }
+
+    // Resaltar faltantes (opcional, Shift+Click en botón)
+    if (markMissed) {
+      // Desde donde quedó 'i' hasta el final, marcar como 'missed' por no haber suficientes datos
+      for (let k = i; k < inputs.length; k++) {
+        if (!inputs[k].value) inputs[k].classList.add('pasted-missed');
+      }
+    }
+
+    // Auto-borrado suave de resaltados después de unos segundos
+    window.clearTimeout(distributeValues._tid);
+    distributeValues._tid = window.setTimeout(()=>{
+      for (const el of inputs) el.classList.remove('pasted-ok','pasted-bad','pasted-missed');
+    }, 5000);
+
+    return { assigned, startIndex, endIndex: i-1, totalInputs: inputs.length };
+  }
+
+  // Pegado con Ctrl+V/⌘+V en cualquier input: abarca todo el formulario
+  document.addEventListener('paste', function(e){
+    const target = e.target;
+    if (!target.classList.contains('valor-input')) return;
+
+    const clip = (e.clipboardData || window.clipboardData);
+    if (!clip) return;
+    const text = clip.getData('text');
+    if (!text) return;
+    e.preventDefault();
+
+    const tokens = tokenizeClipboard(text);
+    if (!tokens.length) return;
+
+    const inputs = allValorInputs();
+    const start = Math.max(0, inputs.indexOf(target));
+    const onlyEmpty = e.shiftKey === true; // Shift+Pegar => solo llenar vacíos
+    distributeValues(tokens, start, { onlyEmpty, markMissed:false });
+    target.focus();
+  });
+
+  // Botón "Pegar columna" con Clipboard API + fallback guiado
+  const btn = document.getElementById('btn-pegar-columna');
+  const hint = document.getElementById('paste-hint');
+  let helper = null;
+
+  function showHint() {
+    if (!hint) return;
+    // Posiciona relativo al contenedor del botón
+    const parent = btn.closest('.col-auto') || btn.parentElement;
+    parent.style.position = 'relative';
+    hint.classList.remove('d-none');
+    // Oculta en unos segundos si no se cierra antes
+    window.clearTimeout(showHint._tid);
+    showHint._tid = window.setTimeout(()=> hint.classList.add('d-none'), 6000);
+  }
+  function hideHint() {
+    if (hint) hint.classList.add('d-none');
+  }
+
+  async function readClipboardTextFallback() {
+    // Crea textarea oculto y pide al usuario que presione Ctrl+V/⌘+V
+    if (!helper) {
+      helper = document.createElement('textarea');
+      helper.style.position = 'fixed';
+      helper.style.left = '-9999px';
+      helper.style.top = '0';
+      helper.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(helper);
+    }
+    helper.value = '';
+    helper.focus();
+    showHint();
+    // Espera a que el usuario “pegue” y suelte tecla
+    return new Promise(resolve => {
+      const onKeyUp = () => {
+        document.removeEventListener('keyup', onKeyUp);
+        const text = helper.value || '';
+        hideHint();
+        resolve(text);
+      };
+      document.addEventListener('keyup', onKeyUp, { once: true });
+    });
+  }
+
+  btn?.addEventListener('click', async function(e){
+    const inputs = allValorInputs();
+    if (!inputs.length) return;
+
+    const active = document.activeElement;
+    const startEl = (active && active.classList && active.classList.contains('valor-input')) ? active : inputs[0];
+    const startIndex = inputs.indexOf(startEl);
+    const markMissed = e.shiftKey === true; // Shift+Click => marcar faltantes
+    let text = '';
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        text = await navigator.clipboard.readText();
+      } else {
+        text = await readClipboardTextFallback();
+      }
+    } catch (_) {
+      text = await readClipboardTextFallback();
+    }
+    if (!text || !text.trim()) return;
+
+    const tokens = tokenizeClipboard(text);
+    if (!tokens.length) return;
+
+    distributeValues(tokens, Math.max(0, startIndex), { onlyEmpty:false, markMissed });
+    startEl.focus();
+  });
+})();
+</script>
+<!-- Formulario -->
+<script>
+(function(){
+  const form = document.getElementById('form-datos');
+  const endpoint = "{% url 'lab:lab_data_entry' %}";
+
+  // CSRF helpers
+  function getCookie(name) {
+    let result = null;
+    if (document.cookie && document.cookie !== '') {
+      const cs = document.cookie.split(';');
+      for (let i=0;i<cs.length;i++){
+        const c = cs[i].trim();
+        if (c.substring(0, name.length + 1) === (name + '=')) {
+          result = decodeURIComponent(c.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return result;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // Mensajes
+  function showToast(type, text){
+    // Si ya tienes un contenedor global (p.ej. window.showGlobalMessage), úsalo:
+    if (window.showGlobalMessage) { window.showGlobalMessage(type, text); return; }
+    alert(text);
+  }
+
+  form?.addEventListener('submit', async function(e){
+    e.preventDefault();
+
+    const fd = new FormData(form);
+    // Limpieza: no enviar campos vacíos de valor_*
+    for (const [k, v] of Array.from(fd.entries())) {
+      if (k.startsWith('valor_') && (v === '' || v === null)) fd.delete(k);
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      });
+      const data = await res.json().catch(()=> ({}));
+      if (!res.ok) {
+        showToast('danger', 'No se pudieron guardar los datos. Revisa la conexión o vuelve a intentar.');
+        return;
+      }
+      // data = { saved: N, errors: { key: msg, ... } }
+      const saved = data.saved || 0;
+      const errors = data.errors || {};
+      if (saved > 0) showToast('success', `Se guardaron ${saved} valores correctamente.`);
+      const errKeys = Object.keys(errors);
+      if (errKeys.length) {
+        // Marca inputs con error
+        errKeys.forEach(k => {
+          const id = k.replace('valor_', '');
+          const el = form.querySelector(`input[name="valor_${id}"]`);
+          if (el) {
+            el.classList.add('pasted-bad');
+            setTimeout(()=> el.classList.remove('pasted-bad'), 4000);
+          }
+        });
+        showToast('warning', `Algunos valores no se guardaron: ${errKeys.length} error(es).`);
+      }
+    } catch (err) {
+      showToast('danger', 'Error de red al guardar. Intenta nuevamente.');
+    }
+  });
+})();
+</script>

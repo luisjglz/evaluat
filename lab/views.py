@@ -10,13 +10,72 @@ from django.urls import reverse, reverse_lazy
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from .utils.puede_editar_config import puede_editar_config
-
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from datetime import date
 
 from .models import (
     UserLaboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig,
     Instrumento, MetodoAnalitico, Reactivo, UnidadDeMedida, PropiedadARevisar,
-    Laboratorio
+    Laboratorio, Dato, Reporte
 )
+
+# ----------- Helpers -----------
+def avanzar_estado_si_corresponde(lab, *, persistir: bool = True):
+    """
+    Reglas:
+    - 1→2: desde el día 16 local si no hay override de edición.
+    - 2→3: por completitud del mes (todas las pruebas requeridas) si no hay override de captura.
+    - 3 se respeta; solo cambia por acción de admin u override de captura.
+    """
+    from django.utils import timezone
+    hoy = timezone.localdate()
+    if lab.estado == 3:
+        return lab
+    ed_override = lab.override_edicion_activa and (lab.override_edicion_hasta is None or hoy <= lab.override_edicion_hasta)
+    if lab.estado == 1 and not ed_override and hoy.day >= 16:
+        lab.estado = 2
+        if persistir:
+            lab.save(update_fields=['estado'])
+        return lab
+    cap_override = lab.override_captura_activa and (lab.override_captura_hasta is None or hoy <= lab.override_captura_hasta)
+    # El cierre por completitud se evalúa después del guardado en la vista de data_entry
+    return lab
+
+# def avanzar_estado_si_corresponde(lab: Laboratorio, *, persistir: bool = True) -> Laboratorio:
+#     """
+#     Reglas:
+#     - Si admin fija estado 1|2|3 manualmente, se respeta el valor salvo transición natural a 2 por fecha.
+#     - Si override_edicion_activa y override_edicion_hasta:
+#         - Mientras hoy <= override_edicion_hasta, no se fuerza a 2.
+#         - Si hoy > override_edicion_hasta, estado => 2 (registro).
+#     - Sin override:
+#         - Si hoy.day > edicion_hasta_dia, estado => 2 (registro).
+#     - Nunca sobreescribe manualmente a 3 (consulta); admin manda.
+#     """
+#     hoy = timezone.localdate()
+
+#     # Caso 3 (Consulta) es totalmente manual: no forzar cambios automáticos
+#     if lab.estado == 3:
+#         return lab
+
+#     # Override activo define la ventana de edición
+#     if lab.override_edicion_activa and lab.override_edicion_hasta:
+#         if hoy > lab.override_edicion_hasta and lab.estado != 2:
+#             lab.estado = 2
+#             if persistir:
+#                 lab.save(update_fields=['estado'])
+#         return lab
+
+#     # Sin override: usar el día límite de edición (por defecto 15 si no definido)
+#     dia_limite = lab.edicion_hasta_dia or 15
+#     if hoy.day > dia_limite and lab.estado != 2:
+#         lab.estado = 2
+#         if persistir:
+#             lab.save(update_fields=['estado'])
+
+#     return lab
+
 
 # --------------------------
 # Vistas para manejo de autenticación con homepage y login system de Django
@@ -40,21 +99,56 @@ def homepage(request):
 # --------------------------
 # Vistas para manejo de laboratorios
 # --------------------------
-@login_required
-def select_lab(request):
-    """
-    Vista inicial donde el usuario selecciona uno de los laboratorios
-    a los que tiene acceso. Estos laboratorios vienen de UserLaboratorio.
-    """
-    laboratorios_usuario = Laboratorio.objects.filter(usuarios__user_id=request.user)
+# @login_required
+# def select_lab(request):
+#     """
+#     Vista inicial donde el usuario selecciona uno de los laboratorios
+#     a los que tiene acceso. Estos laboratorios vienen de UserLaboratorio/Laboratorio. 
+#     """
+#     # Laboratorios a los que el usuario pertenece
+#     laboratorios_usuario_qs = Laboratorio.objects.filter(
+#         usuarios__user_id=request.user
+#     ).distinct().order_by('nombre')
+#     laboratorios_usuario = list(laboratorios_usuario_qs)
 
-    if request.method == "POST":
-        laboratorio_id = request.POST.get("laboratorio_id")
-        if laboratorio_id:
-            request.session["laboratorio_seleccionado"] = laboratorio_id
-            return redirect("lab:labmainview")
+#     if request.method == 'GET':
+#         # Si no tiene laboratorios, mostrar mensaje y página de selección vacía
+#         if not laboratorios_usuario:
+#             messages.error(request, "No tienes laboratorios asignados. Contacta al administrador.")
+#             return render(request, 'select_lab.html', {'laboratorios': []})
 
-    return render(request, "select_lab.html", {"laboratorios": laboratorios_usuario})
+#         # Si ya hay un laboratorio en sesión y sigue siendo válido, atajo (opcional)
+#         lab_id_sesion = request.session.get('laboratorio_seleccionado')
+#         if lab_id_sesion and laboratorios_usuario_qs.filter(id=lab_id_sesion).exists():
+#             return redirect('lab:lab_route')
+
+#         # Si solo tiene uno, saltar selección y mandar a ruteo por estado
+#         if len(laboratorios_usuario) == 1:
+#             request.session['laboratorio_seleccionado'] = laboratorios_usuario[0].id
+#             return redirect('lab:lab_route')
+
+#         # Caso normal: mostrar selector
+#         return render(request, 'select_lab.html', {'laboratorios': laboratorios_usuario})
+
+#     if request.method == 'POST':
+#         laboratorio_id = request.POST.get("laboratorio_id")
+#         try:
+#             laboratorio_id = int(laboratorio_id)
+#         except (TypeError, ValueError):
+#             messages.error(request, "Selecciona un laboratorio válido.")
+#             return redirect('lab:select_lab')
+
+#         # Validar pertenencia
+#         if not laboratorios_usuario_qs.filter(id=laboratorio_id).exists():
+#             messages.error(request, "No tienes acceso a ese laboratorio.")
+#             return redirect('lab:select_lab')
+
+#         # Guardar selección en sesión y delegar a ruteo por estado
+#         request.session["laboratorio_seleccionado"] = laboratorio_id
+#         return redirect("lab:lab_route")
+
+#     # Fallback (no debería llegar)
+#     return render(request, "select_lab.html", {"laboratorios": laboratorios_usuario})
 
 
 # --------------------------
@@ -75,41 +169,69 @@ class LabMainView(LoginRequiredMixin, View):
     login_url = reverse_lazy('lab:homepage')
 
     def get(self, request):
-        laboratorio_id = request.session.get("laboratorio_seleccionado")
-        laboratorio = Laboratorio.objects.filter(id=laboratorio_id).first() if laboratorio_id else None
-
-        if not laboratorio:
+        lab_id = request.session.get("laboratorio_seleccionado")
+        lab = Laboratorio.objects.filter(id=lab_id).first() if lab_id else None
+        if not lab:
             messages.error(request, "No hay laboratorio asociado a tu usuario.")
             return redirect('lab:homepage')
 
-        programas_ids = ProgramaLaboratorio.objects.filter(
-            laboratorio_id=laboratorio.id
-        ).values_list('programa_id', flat=True)
+        # Asegurar estado actualizado
+        avanzar_estado_si_corresponde(lab, persistir=True)
 
-        pruebas_laboratorio = Prueba.objects.filter(programa_id__in=programas_ids)
-        accepted_configs = LaboratorioPruebaConfig.objects.filter(laboratorio_id=laboratorio)
-        accepted_prueba_ids = accepted_configs.values_list('prueba_id', flat=True)
-        pending_pruebas = pruebas_laboratorio.exclude(id__in=accepted_prueba_ids)
+        ctx = {'lab': lab, 'today': timezone.localdate()}
 
-        # Construir el wrapper con el flag can_edit por fila
-        accepted_configs_wrapped = [
-            {"obj": c, "can_edit": puede_editar_config(laboratorio, c)}
-            for c in accepted_configs
-        ]
+        if lab.estado == 1:
+            # Contexto para configuraciones
+            programas_ids = ProgramaLaboratorio.objects.filter(
+                laboratorio_id=lab.id
+            ).values_list('programa_id', flat=True)
 
-        context = {
-            'pending_pruebas': pending_pruebas,
-            'accepted_configs': accepted_configs,               # si lo usas en otras partes
-            'accepted_configs_wrapped': accepted_configs_wrapped,  # para Acciones/Editar
-            'instrumentos': Instrumento.objects.all(),
-            'metodos': MetodoAnalitico.objects.all(),
-            'reactivos': Reactivo.objects.all(),
-            'unidades': UnidadDeMedida.objects.all(),
-            'laboratorio': laboratorio,
-            'propuestas': PropiedadARevisar.objects.all(),
-            'today': timezone.localdate(),  # opcional, solo para display
+            pruebas_laboratorio = Prueba.objects.filter(programa_id__in=programas_ids)
+
+            accepted_configs = LaboratorioPruebaConfig.objects.filter(laboratorio_id=lab)
+            accepted_prueba_ids = accepted_configs.values_list('prueba_id', flat=True)
+
+            pending_pruebas = pruebas_laboratorio.exclude(id__in=accepted_prueba_ids)
+
+            accepted_configs_wrapped = [
+                {"obj": c, "can_edit": puede_editar_config(lab, c)}
+                for c in accepted_configs
+            ]
+
+            ctx.update({
+                'pending_pruebas': pending_pruebas,
+                'accepted_configs': accepted_configs,
+                'accepted_configs_wrapped': accepted_configs_wrapped,
+                'instrumentos': Instrumento.objects.all(),
+                'metodos': MetodoAnalitico.objects.all(),
+                'reactivos': Reactivo.objects.all(),
+                'unidades': UnidadDeMedida.objects.all(),
+                'propuestas': PropiedadARevisar.objects.all(),
+            })
+            return render(request, self.template_name, ctx)
+
+        # Estado 2 o 3: registro/consulta - solo pruebas configuradas
+        cfgs = (LaboratorioPruebaConfig.objects
+                .filter(laboratorio_id=lab)
+                .select_related("prueba_id", "unidad_de_medida_id"))
+        unidades_por_prueba = {
+            c.prueba_id_id: (c.unidad_de_medida_id.nombre if c.unidad_de_medida_id else "")
+            for c in cfgs
         }
-        return render(request, self.template_name, context)
+        pruebas_cfg_ids = list(unidades_por_prueba.keys())
+
+        pls = ProgramaLaboratorio.objects.filter(laboratorio_id=lab).select_related("programa_id")
+        programas = []
+        for pl in pls:
+            pruebas = (Prueba.objects
+                       .filter(programa_id=pl.programa_id, id__in=pruebas_cfg_ids)
+                       .order_by("nombre"))
+            if pruebas.exists():
+                filas = [{"prueba": p, "unidad": unidades_por_prueba.get(p.id, "")} for p in pruebas]
+                programas.append({"programa": pl.programa_id, "filas": filas})
+
+        ctx.update({"programas": programas})
+        return render(request, self.template_name, ctx)
 
 # --------------------------
 # Crear o actualizar configuración (incluye propuestas)
@@ -296,18 +418,14 @@ def aceptar_configuracion(request, config_id):
 # --------------------------
 # Vista central para aceptación de configuraciones
 # --------------------------
+@login_required
 def accept_configurations(request):
-    """
-    Muestra configuraciones pendientes, aceptadas y propuestas.
-    """
-    laboratorio_id = request.session.get("laboratorio_seleccionado")
-    laboratorio = None
-    if laboratorio_id:
-        laboratorio = Laboratorio.objects.filter(id=laboratorio_id).first()
-
-    if not laboratorio:
+    lab_id = request.session.get('laboratorio_seleccionado')
+    if not lab_id:
         messages.error(request, "No hay laboratorio asociado a tu usuario.")
-        return redirect('lab:labmainview')
+        return redirect('lab:select_lab')
+
+    laboratorio = get_object_or_404(Laboratorio, pk=lab_id)
 
     programas_ids = ProgramaLaboratorio.objects.filter(
         laboratorio_id=laboratorio.id
@@ -317,20 +435,30 @@ def accept_configurations(request):
 
     accepted_configs = LaboratorioPruebaConfig.objects.filter(laboratorio_id=laboratorio)
     accepted_prueba_ids = accepted_configs.values_list('prueba_id', flat=True)
+
     pending_pruebas = pruebas_laboratorio.exclude(id__in=accepted_prueba_ids)
 
-    propuestas = PropiedadARevisar.objects.all()
+    # CONSTRUIR WRAPPER PARA EL TEMPLATE
+    accepted_configs_wrapped = [
+        {"obj": c, "can_edit": puede_editar_config(laboratorio, c)}
+        for c in accepted_configs
+    ]
 
     context = {
         "pending_pruebas": pending_pruebas,
-        "accepted_configs": accepted_configs,
+        "accepted_configs": accepted_configs,  # si lo usas en otro lado
+        "accepted_configs_wrapped": accepted_configs_wrapped,  # LO QUE USA EL PARCIAL
         "instrumentos": Instrumento.objects.all(),
         "metodos": MetodoAnalitico.objects.all(),
         "reactivos": Reactivo.objects.all(),
         "unidades": UnidadDeMedida.objects.all(),
-        "propuestas": propuestas,
+        "propuestas": PropiedadARevisar.objects.all(),
+        "laboratorio": laboratorio,
+        "today": timezone.localdate(),
     }
-    return render(request, "accept_configurations.html", context)
+    # Renderizar labmain para que traiga topbar/sidebar/footer y dentro incluya el parcial
+    return render(request, "labmain.html", context)
+
 
 # --------------------------
 # Vista para actualizar configuración existente
@@ -383,3 +511,369 @@ def actualizar_configuracion(request, config_id):
     config.save()
 
     return JsonResponse({"success": True, "message": "Configuración actualizada"}, status=200)  # [22]
+
+# --------------------------
+# Vistas para selección de laboratorio y routing basado en estado (se esta configurando, llenando datos o consultado reportes)
+# --------------------------
+# @login_required
+# def select_lab(request):
+#     qs = UserLaboratorio.objects.filter(user_id=request.user).select_related('laboratorio')
+#     labs = [ul.laboratorio for ul in qs]
+#     if request.method == 'GET':
+#         if len(labs) == 1:
+#             request.session['laboratorio_seleccionado'] = labs[0].id
+#             return redirect('lab:lab_route')
+#         return render(request, 'select_lab.html', {'laboratorios': labs})
+#     # POST: el usuario eligió un lab
+#     lab_id = request.POST.get('laboratorio_id') or request.POST.get('laboratorio')
+#     lab = get_object_or_404(Laboratorio, pk=lab_id)
+#     request.session['laboratorio_seleccionado'] = lab.id
+#     return redirect('lab:lab_route')
+
+@login_required
+def select_lab(request):
+    """
+    Selector de laboratorio del usuario (UserLaboratorio/Laboratorio).
+    Si el usuario solo tiene 1 laboratorio, se salta la selección.
+    """
+    laboratorios_usuario_qs = Laboratorio.objects.filter(
+        usuarios__user_id=request.user
+    ).distinct().order_by('nombre')
+    laboratorios_usuario = list(laboratorios_usuario_qs)
+
+    if request.method == 'GET':
+        if not laboratorios_usuario:
+            messages.error(request, "No tienes laboratorios asignados. Contacta al administrador.")
+            return render(request, 'select_lab.html', {'laboratorios': []})
+
+        lab_id_sesion = request.session.get('laboratorio_seleccionado')
+        if lab_id_sesion and laboratorios_usuario_qs.filter(id=lab_id_sesion).exists():
+            return redirect('lab:lab_route')
+
+        if len(laboratorios_usuario) == 1:
+            request.session['laboratorio_seleccionado'] = laboratorios_usuario[0].id
+            return redirect('lab:lab_route')
+
+        return render(request, 'select_lab.html', {'laboratorios': laboratorios_usuario})
+
+    if request.method == 'POST':
+        laboratorio_id = request.POST.get("laboratorio_id")
+        try:
+            laboratorio_id = int(laboratorio_id)
+        except (TypeError, ValueError):
+            messages.error(request, "Selecciona un laboratorio válido.")
+            return redirect('lab:select_lab')
+
+        if not laboratorios_usuario_qs.filter(id=laboratorio_id).exists():
+            messages.error(request, "No tienes acceso a ese laboratorio.")
+            return redirect('lab:select_lab')
+
+        request.session["laboratorio_seleccionado"] = laboratorio_id
+        return redirect('lab:lab_route')
+
+    return render(request, 'select_lab.html', {'laboratorios': laboratorios_usuario})
+
+
+# solo decide y envía a “/lab”
+@login_required
+def lab_route(request):
+    lab_id = request.session.get('laboratorio_seleccionado')
+    if not lab_id:
+        return redirect('lab:select_lab')
+    lab = get_object_or_404(Laboratorio, pk=lab_id)
+    avanzar_estado_si_corresponde(lab, persistir=True)
+    return redirect('lab:labmainview')
+
+
+# @login_required
+# def lab_route(request):
+#     lab_id = request.session.get('laboratorio_seleccionado')
+#     if not lab_id:
+#         return redirect('lab:select_lab')
+#     lab = get_object_or_404(Laboratorio, pk=lab_id)
+#     lab = avanzar_estado_si_corresponde(lab)
+
+#     ctx = {"lab": lab}
+
+#     if lab.estado == 1:
+#         # Contexto para configuraciones (aceptadas/pendientes), ya existente en tu app
+#         # Rellena ctx con pending_pruebas, accepted_configs_wrapped, instrumentos, etc.
+#         return render(request, "labmain.html", ctx)
+#     else:
+#         # Contexto para data entry: solo pruebas configuradas
+#         cfgs = LaboratorioPruebaConfig.objects.filter(laboratorio_id=lab).select_related(
+#             "prueba_id", "unidad_de_medida_id"
+#         )
+#         pruebas_cfg_ids = [c.prueba_id_id for c in cfgs]
+#         # Por programa
+#         pls = ProgramaLaboratorio.objects.filter(laboratorio_id=lab).select_related("programa_id")
+#         programas = []
+#         # Mapa unidad por prueba para la UI
+#         unidades_por_prueba = {c.prueba_id_id: (c.unidad_de_medida_id.nombre if c.unidad_de_medida_id else "") for c in cfgs}
+#         for pl in pls:
+#             pruebas = Prueba.objects.filter(programa_id=pl.programa_id, id__in=pruebas_cfg_ids).order_by("nombre")
+#             if pruebas.exists():
+#                 programas.append({"programa": pl.programa_id, "pruebas": list(pruebas)})
+#         ctx.update({"programas": programas, "unidades_por_prueba": unidades_por_prueba})
+#         return render(request, "labmain.html", ctx)
+
+# @login_required
+# def lab_route(request):
+
+#     lab_id = request.session.get('laboratorio_seleccionado')
+#     if not lab_id:
+#         return redirect('lab:select_lab')
+
+#     lab = get_object_or_404(Laboratorio, pk=lab_id)
+
+#     # Forzar transición si corresponde (fecha de corte u override vencido)
+#     lab = avanzar_estado_si_corresponde(lab)
+
+#     # En lugar de saltar a otra URL, siempre usa la vista principal
+#     return redirect('lab:labmainview')
+#     # Ruteo por estado
+#     # if lab.estado == 1:
+#     #     return redirect('lab:accept_configurations')
+#     # elif lab.estado == 2:
+#     #     return redirect('lab:lab_data_entry')
+#     # else:  # estado == 3 (Consulta)
+#     #     # Puedes crear una vista de reportes/consulta y redirigir aquí
+#     #     return redirect('lab:lab_data_entry')  # fallback: ver datos
+
+
+# --------------------------
+# Vista para propuestas de nuevas propiedades usando un modal (instrumentos, métodos, reactivos, unidades)
+# --------------------------
+@require_POST
+@login_required
+def propose_property(request):
+    tipo = request.POST.get('tipo')            # 'instrumento'|'metodo'|'reactivo'|'unidad'
+    valor = request.POST.get('valor', '').strip()
+    desc  = request.POST.get('descripcion', '').strip()
+    if tipo not in {'instrumento','metodo','reactivo','unidad'} or not valor:
+        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+    prop = PropiedadARevisar.objects.create(
+        tipoElemento=tipo,
+        valor=valor,
+        descripcion=desc,
+        status=0
+    )
+    return JsonResponse({'ok': True, 'id': prop.id})
+
+# --------------------------
+# Vista para captura de datos
+# --------------------------
+# @login_required
+# def lab_data_entry(request):
+#     lab_id = request.session.get('laboratorio_seleccionado')
+#     if not lab_id:
+#         return redirect('lab:select_lab')
+#     lab = get_object_or_404(Laboratorio, pk=lab_id)
+
+#     # Asegurar estado actualizado
+#     lab = avanzar_estado_si_corresponde(lab)
+#     if lab.estado == 1:
+#         return redirect('lab:accept_configurations')
+
+#     if request.method == 'GET':
+#         # Solo pruebas configuradas
+#         cfgs = LaboratorioPruebaConfig.objects.filter(laboratorio_id=lab)
+#         pruebas_cfg_ids = set(cfgs.values_list('prueba_id', flat=True))
+
+#         pls = ProgramaLaboratorio.objects.filter(laboratorio_id=lab).select_related('programa_id')
+#         programas = []
+#         for pl in pls:
+#             pruebas = Prueba.objects.filter(
+#                 programa_id=pl.programa_id,
+#                 id__in=pruebas_cfg_ids
+#             ).order_by('nombre')
+#             if pruebas.exists():
+#                 programas.append({'programa': pl.programa_id, 'pruebas': pruebas})
+
+#         return render(request, 'data_entry.html', {'lab': lab, 'programas': programas})
+
+#     # POST: guardado parcial
+#     mes = date.today().replace(day=1)
+#     if mes_str:
+#         try:
+#             yyyy, mm, dd = map(int, mes_str.split('-'))
+#             mes = date(yyyy, mm, 1)
+#         except Exception:
+#             mes = date.today().replace(day=1)
+#     else:
+#         mes = date.today().replace(day=1)
+
+#     saved, errors = 0, {}
+#     with transaction.atomic():
+#         for key, val in request.POST.items():
+#             if not key.startswith('valor_'):
+#                 continue
+#             if val == '':
+#                 continue
+#             try:
+#                 prueba_id = int(key.split('_', 1)[1])
+#                 valor = float(val)
+#             except Exception:
+#                 errors[key] = 'Valor inválido'
+#                 continue
+#             prueba = get_object_or_404(Prueba, pk=prueba_id)
+#             try:
+#                 obj, created = Dato.objects.update_or_create(
+#                     laboratorio_id_id=lab.id,
+#                     prueba_id_id=prueba.id,
+#                     mes=mes,
+#                     defaults={'valor': valor}
+#                 )
+#                 saved += 1
+#             except IntegrityError:
+#                 errors[key] = 'Duplicado en el mes'
+#     return JsonResponse({'saved': saved, 'errors': errors})
+
+def filled_all_month(lab, mes):
+    """True si todas las pruebas configuradas del laboratorio tienen Dato en ese mes."""
+    req_ids = set(LaboratorioPruebaConfig.objects.filter(laboratorio_id=lab.id).values_list('prueba_id', flat=True))
+    if not req_ids:
+        return False
+    capturadas = Dato.objects.filter(laboratorio_id=lab.id, mes=mes, prueba_id_id__in=req_ids).count()
+    return capturadas >= len(req_ids)
+
+# def avanzar_estado_si_corresponde(lab: Laboratorio, *, persistir: bool = True) -> Laboratorio:
+#     """
+#     - Admin manda en estado 3 (Consulta): no se sobreescribe automáticamente.
+#     - Con override: mientras hoy <= override_edicion_hasta, no se fuerza; si hoy > override, estado => 2.
+#     - Sin override: si hoy.day > edicion_hasta_dia (default 15), estado => 2.
+#     """
+#     hoy = timezone.localdate()
+#     if lab.estado == 3:
+#         return lab
+#     if lab.override_edicion_activa and lab.override_edicion_hasta:
+#         if hoy > lab.override_edicion_hasta and lab.estado != 2:
+#             lab.estado = 2
+#             if persistir:
+#                 lab.save(update_fields=['estado'])
+#         return lab
+#     dia_limite = lab.edicion_hasta_dia or 15
+#     if hoy.day > dia_limite and lab.estado != 2:
+#         lab.estado = 2
+#         if persistir:
+#             lab.save(update_fields=['estado'])
+#     return lab
+
+@login_required
+def lab_data_entry(request):
+    lab_id = request.session.get('laboratorio_seleccionado')
+    if not lab_id:
+        return JsonResponse({'error': 'Laboratorio no seleccionado'}, status=400)
+
+    lab = get_object_or_404(Laboratorio, pk=lab_id)
+    lab = avanzar_estado_si_corresponde(lab)
+    if lab.estado == 1:
+        return JsonResponse({'error': 'Modo configuración activo; no se permite registro'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    # Mes siempre controlado por servidor
+    mes = date.today().replace(day=1)
+
+    saved, errors = 0, {}
+    import re
+    sci_re = re.compile(r'^[+-]?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][+-]?\d+)?$')
+
+    with transaction.atomic():
+        for key, val in request.POST.items():
+            if not key.startswith('valor_'):
+                continue
+
+            # Refuerzo: ignorar vacíos/espacios
+            if val is None or str(val).strip() == '':
+                continue
+
+            # Normalizar coma decimal a punto y validar formato
+            raw = str(val).strip().replace(',', '.')
+            if not sci_re.match(raw):
+                errors[key] = 'Valor inválido'
+                continue
+
+            try:
+                prueba_id = int(key.split('_', 1)[1])
+                valor = float(raw)
+            except Exception:
+                errors[key] = 'Valor inválido'
+                continue
+
+            prueba = get_object_or_404(Prueba, pk=prueba_id)
+            # try:
+            #     Dato.objects.update_or_create(
+            #         laboratorio_id_id=lab.id,
+            #         prueba_id_id=prueba.id,
+            #         mes=mes,
+            #         defaults={'valor': valor}
+            #     )
+            #     saved += 1
+            # except IntegrityError:
+            #     errors[key] = 'Duplicado en el mes'
+            obj, created = Dato.objects.get_or_create(
+                laboratorio_id_id=lab.id,
+                prueba_id_id=prueba.id,
+                mes=mes,
+                defaults={'valor': valor}
+            )
+            if created:
+                saved += 1
+            else:
+                errors[key] = 'Dato ya registrado este mes'
+
+    # return JsonResponse({'saved': saved, 'errors': errors}, status=200)
+    hoy = timezone.localdate()
+    cap_override_vigente = lab.override_captura_activa and (lab.override_captura_hasta is None or hoy <= lab.override_captura_hasta)
+    if lab.estado == 2 and not cap_override_vigente and filled_all_month(lab, mes):
+        lab.estado = 3
+        lab.save(update_fields=['estado'])
+    closed = (lab.estado == 3) and not cap_override_vigente
+    return JsonResponse({'saved': saved, 'errors': errors, 'closed': closed}, status=200)
+
+
+# ------- Vistas PDF al final del archivo --------
+
+class ReportUploadView(View):
+    def post(self, request, *args, **kwargs):
+        lab_id = request.POST.get('laboratorio_id')
+        mes_str = request.POST.get('mes')
+        nombre = request.POST.get('nombre') or 'Reporte'
+        archivo = request.FILES.get('archivo')
+        if not lab_id or not mes_str or not archivo:
+            return JsonResponse({'success': False, 'errors': {'non_field': ['Faltan campos requeridos']}}, status=400)
+        if archivo.content_type != 'application/pdf':
+            return JsonResponse({'success': False, 'errors': {'archivo': ['Solo PDF es permitido']}}, status=400)
+        if len(mes_str) == 7:
+            mes_str = f'{mes_str}-01'
+        from datetime import date
+        try:
+            yyyy, mm, dd = map(int, mes_str.split('-'))
+            mes = date(yyyy, mm, 1)
+        except Exception:
+            return JsonResponse({'success': False, 'errors': {'mes': ['Formato inválido']}}, status=400)
+        lab = get_object_or_404(Laboratorio, pk=lab_id)
+        from django.db import transaction
+        with transaction.atomic():
+            rep = Reporte.objects.create(laboratorio=lab, mes=mes, nombre=nombre, archivo=archivo)
+        return JsonResponse({'success': True, 'data': {'id': rep.id, 'nombre': rep.nombre}})
+
+class ReportListView(View):
+    def get(self, request, *args, **kwargs):
+        lab_id = request.GET.get('laboratorio_id')
+        mes_str = request.GET.get('mes')
+        if not lab_id or not mes_str:
+            return JsonResponse({'success': False, 'errors': {'non_field': ['Faltan parámetros']}}, status=400)
+        if len(mes_str) == 7:
+            mes_str = f'{mes_str}-01'
+        from datetime import date
+        try:
+            yyyy, mm, dd = map(int, mes_str.split('-'))
+            mes = date(yyyy, mm, 1)
+        except Exception:
+            return JsonResponse({'success': False, 'errors': {'mes': ['Formato inválido']}}, status=400)
+        lab = get_object_or_404(Laboratorio, pk=lab_id)
+        data = [{'id': r.id, 'nombre': r.nombre, 'url': r.archivo.url} for r in lab.reportes.filter(mes=mes).order_by('-creado_en')]
+        return JsonResponse({'success': True, 'data': data})

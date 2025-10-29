@@ -4,7 +4,11 @@
   <div class="card">
     <div class="card-header">
       <h6 class="card-title">Laboratorio</h6>
-      {% include "accept_configurations.html" %}
+      {% if lab.estado == 1 %}
+          {% include "accept_configurations.html" %}
+        {% else %}
+          {% include "./partials/_data_entry.html" %}
+        {% endif %}
     </div>
   </div>
 </div>

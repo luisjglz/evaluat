@@ -3,6 +3,14 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import date
 
+# ----------- Helpers -----------
+# Helper para fecha por defecto
+def first_day_of_current_month():
+    # usa zona horaria de Django y normaliza al día 1
+    return timezone.now().date().replace(day=1)
+
+# ----------- Models -----------
+
 class Laboratorio(models.Model):
     nombre = models.CharField(max_length=255)
     clave = models.CharField(max_length=255)
@@ -10,6 +18,9 @@ class Laboratorio(models.Model):
     edicion_hasta_dia = models.PositiveSmallIntegerField(default=15) # Con esto un admin puede cambiar el día límite (p.ej. 15),
     override_edicion_activa = models.BooleanField(default=False) # activar una excepción y opcionalmente fijar una fecha hasta cuándo aplica.
     override_edicion_hasta = models.DateField(null=True, blank=True)
+    corte_captura_dia = models.PositiveSmallIntegerField(default=25)
+    override_captura_activa = models.BooleanField(default=False)
+    override_captura_hasta = models.DateField(null=True, blank=True)
     estado = models.PositiveSmallIntegerField(
         choices=[(1, "Configuración"), (2, "Registro"), (3, "Consulta")],
         default=1
@@ -139,11 +150,6 @@ class LaboratorioPruebaConfig(models.Model):
         ]
         verbose_name_plural = "LaboratorioPruebaConfig"
 
-def first_day_of_current_month():
-    # usa zona horaria de Django y normaliza al día 1
-    return timezone.now().date().replace(day=1)
-
-
 class Dato(models.Model):
     laboratorio_id = models.ForeignKey(Laboratorio, on_delete=models.PROTECT, related_name='datos')
     prueba_id = models.ForeignKey(Prueba, on_delete=models.PROTECT, related_name='datos')
@@ -152,7 +158,7 @@ class Dato(models.Model):
     mes = models.DateField(default=first_day_of_current_month)  # primer día del mes actual
 
     def __str__(self):
-        return f"{self.prueba_id} - {self.valor} - {self.fecha}"
+        return f"{self.laboratorio_id} - {self.prueba_id} - {self.valor} - {self.fecha}"
     
     class Meta:
         constraints = [
@@ -175,3 +181,13 @@ class KitDeReactivos(models.Model):
     
     class Meta:
         verbose_name_plural = "KitDeReactivos"
+
+class Reporte(models.Model):
+    laboratorio = models.ForeignKey('Laboratorio', on_delete=models.CASCADE, related_name='reportes')
+    mes = models.DateField(help_text="Primer día del mes (YYYY-MM-01)")
+    nombre = models.CharField(max_length=200)
+    archivo = models.FileField(upload_to='reportes/%Y/%m/')
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.nombre} ({self.mes:%Y-%m})'
