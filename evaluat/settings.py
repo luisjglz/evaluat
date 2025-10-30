@@ -137,3 +137,12 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# settings.py
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'  # configurar en PythonAnywhere y mapear como Static files
+
+# Opcional: S3/Backblaze B2 con django-storages
+# INSTALLED_APPS += ['storages']
+# DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+# Configurar credenciales y bucket en variables de entorno

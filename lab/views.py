@@ -13,6 +13,7 @@ from .utils.puede_editar_config import puede_editar_config
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from datetime import date
+import re
 
 from .models import (
     UserLaboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig,
@@ -164,7 +165,115 @@ def logout_user(request):
 # --------------------------
 # Vista principal de /lab
 # --------------------------
+from django.views import View
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse_lazy
+from django.contrib import messages
+from django.utils import timezone
+
 class LabMainView(LoginRequiredMixin, View):
+    template_name = 'labmain.html'
+    login_url = reverse_lazy('lab:homepage')
+
+    def get(self, request):
+        lab_id = request.session.get("laboratorio_seleccionado")
+        lab = Laboratorio.objects.filter(id=lab_id).first() if lab_id else None
+        if not lab:
+            messages.error(request, "No hay laboratorio asociado a tu usuario.")
+            return redirect('lab:homepage')
+
+        # Asegurar estado actualizado
+        avanzar_estado_si_corresponde(lab, persistir=True)
+
+        ctx = {'lab': lab, 'today': timezone.localdate()}
+
+        # Estado 1: configuración
+        if lab.estado == 1:
+            programas_ids = ProgramaLaboratorio.objects.filter(
+                laboratorio_id=lab.id
+            ).values_list('programa_id', flat=True)
+
+            pruebas_laboratorio = Prueba.objects.filter(programa_id__in=programas_ids)
+
+            accepted_configs = LaboratorioPruebaConfig.objects.filter(laboratorio_id=lab)
+            accepted_prueba_ids = accepted_configs.values_list('prueba_id', flat=True)
+
+            pending_pruebas = pruebas_laboratorio.exclude(id__in=accepted_prueba_ids)
+
+            accepted_configs_wrapped = [
+                {"obj": c, "can_edit": puede_editar_config(lab, c)}
+                for c in accepted_configs
+            ]
+
+            ctx.update({
+                'pending_pruebas': pending_pruebas,
+                'accepted_configs': accepted_configs,
+                'accepted_configs_wrapped': accepted_configs_wrapped,
+                'instrumentos': Instrumento.objects.all(),
+                'metodos': MetodoAnalitico.objects.all(),
+                'reactivos': Reactivo.objects.all(),
+                'unidades': UnidadDeMedida.objects.all(),
+                'propuestas': PropiedadARevisar.objects.all(),
+            })
+            return render(request, self.template_name, ctx)
+
+        # Estados 2 y 3: captura/consulta
+        cfgs = (LaboratorioPruebaConfig.objects
+                .filter(laboratorio_id=lab)
+                .select_related("prueba_id", "unidad_de_medida_id"))
+        unidades_por_prueba = {
+            c.prueba_id_id: (c.unidad_de_medida_id.nombre if c.unidad_de_medida_id else "")
+            for c in cfgs
+        }
+        pruebas_cfg_ids = list(unidades_por_prueba.keys())
+
+        pls = ProgramaLaboratorio.objects.filter(laboratorio_id=lab).select_related("programa_id")
+
+        # Grupos por estudio con unidad
+        grupos = []
+        for pl in pls:
+            pruebas = (Prueba.objects
+                       .filter(programa_id=pl.programa_id, id__in=pruebas_cfg_ids)
+                       .order_by("nombre"))
+            if not pruebas.exists():
+                continue
+            filas = []
+            for p in pruebas:
+                unidad = unidades_por_prueba.get(p.id, "") or (
+                    p.unidad_de_medida_seleccionado_id.nombre
+                    if getattr(p, "unidad_de_medida_seleccionado_id", None) else ""
+                )
+                filas.append({"prueba": p, "unidad": unidad})
+            grupos.append({"programa": pl.programa_id, "filas": filas})
+
+        # Mes vigente y datos existentes por prueba
+        mes_vigente = timezone.localdate().replace(day=1)
+        datos_list = Dato.objects.filter(laboratorio_id=lab.id, mes=mes_vigente)
+        datos_por_prueba = {d.prueba_id_id: d for d in datos_list}
+
+        # Lista plana si se requiere en cliente (ordenada por programa/nombre)
+        pruebas_flat = (Prueba.objects
+                        .filter(id__in=pruebas_cfg_ids)
+                        .order_by("programa_id__nombre", "nombre"))
+
+        ctx.update({
+            "programas": grupos,
+            "pruebas": pruebas_flat,
+            "datos_por_prueba": datos_por_prueba,
+            "mes_vigente": mes_vigente,
+        })
+
+        # Estado 3: preparar tabla de reportes
+        if lab.estado == 3:
+            reportes = (Reporte.objects
+                        .filter(laboratorio=lab)
+                        .prefetch_related('programas', 'pruebas')
+                        .order_by('-mes', '-creado_en'))
+            ctx.update({'reportes': reportes})
+
+        return render(request, self.template_name, ctx)
+
     template_name = 'labmain.html'
     login_url = reverse_lazy('lab:homepage')
 
@@ -220,6 +329,7 @@ class LabMainView(LoginRequiredMixin, View):
         }
         pruebas_cfg_ids = list(unidades_por_prueba.keys())
 
+        # Construir programas para otras vistas y pruebas "flatten" para el parcial de captura
         pls = ProgramaLaboratorio.objects.filter(laboratorio_id=lab).select_related("programa_id")
         programas = []
         for pl in pls:
@@ -230,7 +340,52 @@ class LabMainView(LoginRequiredMixin, View):
                 filas = [{"prueba": p, "unidad": unidades_por_prueba.get(p.id, "")} for p in pruebas]
                 programas.append({"programa": pl.programa_id, "filas": filas})
 
-        ctx.update({"programas": programas})
+        # Lista plana de pruebas configuradas para el parcial _data_entry.html
+        pruebas_flat = Prueba.objects.filter(id__in=pruebas_cfg_ids).order_by("nombre")
+
+        # Mes vigente y datos existentes por prueba para deshabilitar inputs ya guardados
+        mes_vigente = timezone.localdate().replace(day=1)
+        datos_list = Dato.objects.filter(laboratorio_id=lab.id, mes=mes_vigente)
+        # nota: usa la clave real de tu FK (prueba_id_id vs prueba_id); aquí se usa prueba_id_id por tu modelo
+        datos_por_prueba = {d.prueba_id_id: d for d in datos_list}
+
+        # Lista plana de pruebas configuradas para inputs (orden DOM estable)
+        pruebas_flat = Prueba.objects.filter(id__in=pruebas_cfg_ids).order_by("programa_id__nombre", "nombre")
+
+        # Mes vigente y datos existentes por prueba para deshabilitar inputs ya guardados
+        mes_vigente = timezone.localdate().replace(day=1)
+        datos_list = Dato.objects.filter(laboratorio_id=lab.id, mes=mes_vigente)
+        datos_por_prueba = {d.prueba_id_id: d for d in datos_list}
+
+        # Estructura agrupada por estudio (programa) con unidad
+        grupos = []
+        for pl in pls:
+            # Solo pruebas configuradas para ese programa
+            pruebas = (Prueba.objects
+                    .filter(programa_id=pl.programa_id, id__in=pruebas_cfg_ids)
+                    .order_by("nombre"))
+            if not pruebas.exists():
+                continue
+            filas = []
+            for p in pruebas:
+                unidad = unidades_por_prueba.get(p.id, "") or (p.unidad_de_medida_seleccionado_id.nombre if getattr(p, "unidad_de_medida_seleccionado_id", None) else "")
+                filas.append({"prueba": p, "unidad": unidad})
+            grupos.append({"programa": pl.programa_id, "filas": filas})
+
+        ctx.update({
+            "programas": grupos,           # grupos colapsables
+            "pruebas": pruebas_flat,       # lista plana usada por JS si se requiere
+            "datos_por_prueba": datos_por_prueba,
+            "mes_vigente": mes_vigente,
+        })
+
+
+        # ctx.update({
+        #     "programas": programas,
+        #     "pruebas": pruebas_flat,
+        #     "datos_por_prueba": datos_por_prueba,
+        #     "mes_vigente": mes_vigente,
+        # })
         return render(request, self.template_name, ctx)
 
 # --------------------------
@@ -760,36 +915,34 @@ def filled_all_month(lab, mes):
 #     return lab
 
 @login_required
+@require_POST
 def lab_data_entry(request):
     lab_id = request.session.get('laboratorio_seleccionado')
     if not lab_id:
-        return JsonResponse({'error': 'Laboratorio no seleccionado'}, status=400)
+        return JsonResponse({'success': False, 'errors': {'non_field': 'Laboratorio no seleccionado'}}, status=400)
 
     lab = get_object_or_404(Laboratorio, pk=lab_id)
+    # Respetar reglas de estado: estado 1 no permite registro
     lab = avanzar_estado_si_corresponde(lab)
     if lab.estado == 1:
-        return JsonResponse({'error': 'Modo configuración activo; no se permite registro'}, status=403)
-
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Método no permitido'}, status=405)
+        return JsonResponse({'success': False, 'errors': {'non_field': 'Modo configuración activo; no se permite registro'}}, status=403)
 
     # Mes siempre controlado por servidor
     mes = date.today().replace(day=1)
 
-    saved, errors = 0, {}
-    import re
+    errors = {}
+    saved_count = 0
+    saved_list = []              # [{'prueba_id': int, 'valor': float}]
+    skipped_existing_list = []   # [{'prueba_id': int}]
     sci_re = re.compile(r'^[+-]?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][+-]?\d+)?$')
 
     with transaction.atomic():
         for key, val in request.POST.items():
             if not key.startswith('valor_'):
                 continue
-
-            # Refuerzo: ignorar vacíos/espacios
             if val is None or str(val).strip() == '':
                 continue
 
-            # Normalizar coma decimal a punto y validar formato
             raw = str(val).strip().replace(',', '.')
             if not sci_re.match(raw):
                 errors[key] = 'Valor inválido'
@@ -803,16 +956,6 @@ def lab_data_entry(request):
                 continue
 
             prueba = get_object_or_404(Prueba, pk=prueba_id)
-            # try:
-            #     Dato.objects.update_or_create(
-            #         laboratorio_id_id=lab.id,
-            #         prueba_id_id=prueba.id,
-            #         mes=mes,
-            #         defaults={'valor': valor}
-            #     )
-            #     saved += 1
-            # except IntegrityError:
-            #     errors[key] = 'Duplicado en el mes'
             obj, created = Dato.objects.get_or_create(
                 laboratorio_id_id=lab.id,
                 prueba_id_id=prueba.id,
@@ -820,18 +963,29 @@ def lab_data_entry(request):
                 defaults={'valor': valor}
             )
             if created:
-                saved += 1
+                saved_count += 1
+                saved_list.append({'prueba_id': prueba.id, 'valor': obj.valor})
             else:
-                errors[key] = 'Dato ya registrado este mes'
+                # Ya existe registro para este mes
+                skipped_existing_list.append({'prueba_id': prueba.id})
 
-    # return JsonResponse({'saved': saved, 'errors': errors}, status=200)
+    # Evaluar cierre por completitud (2→3) sin override de captura
     hoy = timezone.localdate()
     cap_override_vigente = lab.override_captura_activa and (lab.override_captura_hasta is None or hoy <= lab.override_captura_hasta)
     if lab.estado == 2 and not cap_override_vigente and filled_all_month(lab, mes):
         lab.estado = 3
         lab.save(update_fields=['estado'])
     closed = (lab.estado == 3) and not cap_override_vigente
-    return JsonResponse({'saved': saved, 'errors': errors, 'closed': closed}, status=200)
+
+    # Contrato robusto: success + conteo + listas; mantener compatibilidad
+    return JsonResponse({
+        'success': True,
+        'saved': saved_count,
+        'saved_list': saved_list,
+        'skipped_existing': skipped_existing_list,
+        'errors': errors,
+        'closed': closed
+    }, status=200)
 
 
 # ------- Vistas PDF al final del archivo --------

@@ -5,16 +5,15 @@ from .models import PropiedadARevisar
 from .utils.propuestas import materializar_propuesta
 
 # Import only what we need for the custom logic
-from .models import Laboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig
+from .models import Laboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig, Reporte
 
 # ------------ 1) Auto-register all models EXCEPT the ones we want custom ------------
 lab_app = apps.get_app_config('lab')
 
-# Add ProgramaLaboratorio to the excluded list so we can register it with a custom admin below.
 excluded_models = {
     'LogEntry', 'Permission', 'Groups', 'Session', 'ContentType',
     'ProgramaLaboratorio', 'Laboratorio', 'LaboratorioPruebaConfig', 'ProgramaLaboratorio',
-    'PropiedadARevisar' # <-- handled manually below
+    'PropiedadARevisar', 'Reporte' # <-- handled manually below
 }
 
 for model in apps.get_models():
@@ -158,3 +157,11 @@ class PropiedadARevisarAdmin(admin.ModelAdmin):
         # Si cambió a Aprobado (1), materializar
         if obj.status == 1 and (not previo or previo.status != 1):
             materializar_propuesta(obj)
+
+# admin.py
+@admin.register(Reporte)
+class ReporteAdmin(admin.ModelAdmin):
+    list_display = ('laboratorio', 'tipo', 'estado', 'mes', 'fecha', 'nombre')
+    list_filter = ('laboratorio', 'tipo', 'estado', 'mes')
+    search_fields = ('nombre',)
+    filter_horizontal = ('programas', 'pruebas')

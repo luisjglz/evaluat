@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from datetime import date
+from django.db.models import Q
 
 # ----------- Helpers -----------
 # Helper para fecha por defecto
@@ -183,11 +184,34 @@ class KitDeReactivos(models.Model):
         verbose_name_plural = "KitDeReactivos"
 
 class Reporte(models.Model):
+    TIPO_CHOICES = (('mensual', 'Mensual'), ('anual', 'Anual'))
+    ESTADO_CHOICES = (('trabajando', 'Trabajando'), ('completado', 'Completado'))
+
     laboratorio = models.ForeignKey('Laboratorio', on_delete=models.CASCADE, related_name='reportes')
+    # mes se usa como referencia temporal para mensual o año (usando 01-01) para anual
     mes = models.DateField(help_text="Primer día del mes (YYYY-MM-01)")
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default='mensual')
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='trabajando')
+    # fecha que muestra la tabla: si trabajando => fecha de cierre de captura; si completado => fecha de subida
+    fecha = models.DateField(help_text="Fecha de referencia mostrada en tabla")
     nombre = models.CharField(max_length=200)
-    archivo = models.FileField(upload_to='reportes/%Y/%m/')
+    archivo = models.FileField(upload_to='reportes/%Y/%m/', blank=True, null=True)
+    programas = models.ManyToManyField('Programa', related_name='reportes', blank=True)
+    pruebas = models.ManyToManyField('Prueba', related_name='reportes', blank=True)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.nombre} ({self.mes:%Y-%m})'
+
+    class Meta:
+        constraints = [
+            # Un reporte por laboratorio, tipo y periodo (mes: YYYY-MM-01)
+            models.UniqueConstraint(fields=['laboratorio', 'tipo', 'mes'], name='uq_reporte_lab_tipo_mes'),
+            # Si es anual, exigir que mes sea enero (primer día del año)
+            models.CheckConstraint(name='ck_reporte_anual_mes_enero',
+                                   check=Q(tipo='anual', mes__month=1, mes__day=1) | ~Q(tipo='anual')),
+            # Si estado es completado, debe existir archivo
+            models.CheckConstraint(name='ck_reporte_completado_con_archivo',
+                                   check=Q(estado='completado', archivo__isnull=False) | ~Q(estado='completado')),
+        ]
+

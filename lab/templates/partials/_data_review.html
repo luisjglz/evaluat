@@ -1,0 +1,164 @@
+{% load static %}
+{% load custom_tags %}
+
+<section class="mb-4" aria-labelledby="sec-datos-mes">
+  <h2 id="sec-datos-mes" class="h4 mb-3">Datos ingresados este mes</h2>
+
+  {% if programas %}
+    <div class="accordion" id="accordionEstudios">
+      {% for grp in programas %}
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="hd-{{ grp.programa.id }}">
+            <button class="accordion-button{% if not forloop.first %} collapsed{% endif %}" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#rb-{{ grp.programa.id }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                    aria-controls="rb-{{ grp.programa.id }}">
+              {{ grp.programa.nombre }}
+            </button>
+          </h2>
+          {# Importante: NO usar data-bs-parent para permitir múltiples abiertos #}
+          <div id="rb-{{ grp.programa.id }}" class="accordion-collapse collapse{% if forloop.first %} show{% endif %}" aria-labelledby="hd-{{ grp.programa.id }}">
+            <div class="accordion-body">
+              <div class="row g-3">
+                {% for row in grp.filas %}
+                  {% with p=row.prueba dato=datos_por_prueba|get_item:row.prueba.id %}
+                  <div class="col-12">
+                    <div class="row g-2 align-items-center">
+                      <div class="col-12 col-md-4">
+                        <label class="col-form-label fw-semibold">{{ p.nombre }}</label>
+                      </div>
+                      <div class="col-12 col-md-6">
+                        <input type="text" class="form-control form-control-sm" value="{{ dato.valor|default:'' }}" disabled>
+                      </div>
+                      <div class="col-12 col-md-2 text-muted">
+                        <span class="small">{{ row.unidad|default:"" }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {% endwith %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-info mb-0" role="alert">
+      No hay datos capturados este mes.
+    </div>
+  {% endif %}
+</section>
+
+<hr class="my-4">
+
+<section aria-labelledby="sec-reportes">
+  <h2 id="sec-reportes" class="h4 mb-3">Consulta de resultados</h2>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th scope="col">Tipo</th>
+          <th scope="col">Fecha</th>
+          <th scope="col">Nombre</th>
+          <th scope="col">Estado</th>
+          <th scope="col">Estudios</th>
+          <th scope="col">Pruebas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if reportes %}
+          {% for r in reportes %}
+            <tr>
+              <td class="text-capitalize">{{ r.tipo }}</td>
+              <td>{{ r.fecha|date:"Y-m-d" }}</td>
+              <td>
+                {% if r.archivo %}
+                  <a href="{{ r.archivo.url }}" target="_blank" rel="noopener">{{ r.nombre }}</a>
+                {% else %}
+                  {{ r.nombre }}
+                {% endif %}
+              </td>
+              <td class="text-capitalize">{{ r.estado }}</td>
+              <td>
+                {% with lst=r.programas.all %}
+                  {% if lst %}{{ lst|join:", " }}{% else %}—{% endif %}
+                {% endwith %}
+              </td>
+              <td>
+                {% with lst=r.pruebas.all %}
+                  {% if lst %}{{ lst|join:", " }}{% else %}—{% endif %}
+                {% endwith %}
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="6" class="text-center text-muted">No hay reportes disponibles.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+<script>
+(function(){
+  function getCookie(name){const m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return m?m.pop():''}
+
+  async function loadReports(){
+    const labId="{{ lab.id }}";
+    const mes="{{ mes_vigente|date:'Y-m' }}";
+    const resp=await fetch("{% url 'lab:lab_report_list' %}?laboratorio_id="+encodeURIComponent(labId)+"&mes="+encodeURIComponent(mes), {credentials:'same-origin'});
+    const ul = document.getElementById('report-list');
+    const ct = resp.headers.get('content-type') || '';
+    if(!ct.includes('application/json')){
+      ul.innerHTML = '<li class="list-group-item text-danger">Respuesta no válida del servidor.</li>';
+      return;
+    }
+    const data = await resp.json();
+    if(data.success){
+      ul.innerHTML='';
+      if(!data.data.length){
+        ul.innerHTML = '<li class="list-group-item">No hay reportes para este mes.</li>';
+        return;
+      }
+      data.data.forEach(r=>{
+        const li=document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        const a=document.createElement('a');
+        a.href=r.url; a.textContent=r.nombre; a.target="_blank"; a.rel="noopener";
+        li.appendChild(a);
+        const badge=document.createElement('span');
+        badge.className='badge bg-secondary rounded-pill';
+        badge.textContent='PDF';
+        li.appendChild(badge);
+        ul.appendChild(li);
+      });
+    }else{
+      ul.innerHTML = '<li class="list-group-item text-danger">No fue posible cargar los reportes.</li>';
+    }
+  }
+
+  document.getElementById('report-upload-form').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd=new FormData(e.target);
+    const resp=await fetch("{% url 'lab:lab_report_upload' %}",{
+      method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}, body:fd, credentials:'same-origin'
+    });
+    const ct = resp.headers.get('content-type') || '';
+    if(!ct.includes('application/json')){
+      alert('Respuesta no válida del servidor');
+      return;
+    }
+    const data = await resp.json();
+    if(data.success){
+      e.target.reset();
+      loadReports();
+    } else {
+      alert('Error al subir PDF');
+    }
+  });
+
+  loadReports();
+})();
+</script>
