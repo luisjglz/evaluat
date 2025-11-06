@@ -2,7 +2,7 @@
 
 
 <!-- Sidenav Menu -->
-<div class="app-menu">
+<div id="app-menu" class="app-menu" role="navigation" aria-label="Menú lateral" aria-hidden="true">
 
     <!-- Sidenav Brand Logo -->
     <a href="{% url 'lab:labmainview' %}" class="logo-box">
@@ -22,9 +22,10 @@
     </a>
 
     <!-- Sidenav Menu Toggle Button -->
-    <button id="button-hover-toggle" class="absolute top-5 end-2 rounded-full p-1.5">
-        <span class="sr-only">Menu Toggle Button</span>
-        <i class="mgc_round_line text-xl"></i>
+    <button id="button-hover-toggle" type="button" class="absolute top-5 end-2 rounded-full p-1.5"
+            aria-controls="app-menu" aria-expanded="false" aria-label="Cerrar menú">
+    <span class="sr-only">Menu Toggle Button</span>
+    <i class="mgc_round_line text-xl"></i>
     </button>
 
     <!--- Menu -->
@@ -35,11 +36,11 @@
             <li class="menu-item">
                 <a href="{% url 'lab:labmainview' %}" class="menu-link">
                     <span class="menu-icon"><i class="mgc_home_3_line"></i></span>
-                    <span class="menu-text"> Dashboard </span>
+                    <span class="menu-text"> Página principal </span>
                 </a>
             </li>
 
-            <li class="menu-title">Pacientes</li>
+            <!-- <li class="menu-title">Pacientes</li>
             {% if user.is_staff %}
             <li class="menu-item">
                 <a href="#." class="menu-link">
@@ -69,22 +70,24 @@
                     <span class="menu-icon"><i class="mgc_list_check_3_line"></i></span>
                     <span class="menu-text"> Listado </span>
                 </a>
-            </li>
+            </li> -->
 
-            <li class="menu-title">Estudios</li>
-            <li class="menu-item">
+            <li class="menu-title">Consulta</li>
+            <!-- <li class="menu-item">
                 <a href="#." class="menu-link">
                     <span class="menu-icon"><i class="mgc_folder_star_line"></i></span>
                     <span class="menu-text"> Catálogo de estudios </span>
                 </a>
-            </li>
+            </li> -->
             <li class="menu-item">
-                <a href="#." class="menu-link">
-                    <span class="menu-icon"><i class="mgc_news_line"></i></span>
-                    <span class="menu-text"> Nuevo estudio </span>
-                </a>
+            <a href="{% url 'lab:reports' %}" class="menu-link">
+                <span class="menu-icon"><i class="mgc_news_line"></i></span>
+                <span class="menu-text"> Reportes </span>
+            </a>
             </li>
-            <li class="menu-item">
+
+
+            <!-- <li class="menu-item">
                 <a href="#." class="menu-link">
                     <span class="menu-icon"><i class="mgc_folders_line"></i></span>
                     <span class="menu-text"> Catálogo de grupos </span>
@@ -119,9 +122,9 @@
                     <span class="menu-icon"><i class="mgc_glass_cup_line"></i></span>
                     <span class="menu-text"> Contenedores </span>
                 </a>
-            </li>
+            </li> -->
             
-            {% if user.is_staff %}
+            <!-- {% if user.is_staff %}
             <li class="menu-title">Usuarios</li>
 
             <li class="menu-item">
@@ -138,9 +141,49 @@
                 </a>
             </li>
             {% endif %}
-            {% endif %}
+            {% endif %} -->
 
         </ul>
 
     </div>
 </div>
+
+<!-- Backdrop -->
+<!-- Backdrop -->
+<div id="menu-backdrop" class="menu-backdrop" aria-hidden="true"></div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const menu   = document.getElementById('app-menu');
+  const btnTop = document.getElementById('button-toggle-menu');      // botón en topbar
+  const btnSide= document.getElementById('button-hover-toggle');     // botón dentro del sidebar
+  const bd     = document.getElementById('menu-backdrop');
+
+
+  function setOpen(open){
+    menu.classList.toggle('is-open', open);
+    document.body.classList.toggle('menu-open', open);
+    bd.classList.toggle('show', open);
+    menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if (btnTop)  btnTop.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (btnSide) btnSide.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+
+  const toggle = ()=> setOpen(!menu.classList.contains('is-open'));
+
+
+  if (btnTop)  btnTop.addEventListener('click', toggle);
+  if (btnSide) btnSide.addEventListener('click', toggle);
+  if (bd)      bd.addEventListener('click', ()=> setOpen(false));
+  document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') setOpen(false); });
+
+
+  // Cerrar al navegar
+  document.querySelectorAll('#app-menu .menu-link').forEach(a=>{
+    a.addEventListener('click', ()=> setOpen(false));
+  });
+});
+</script>
+

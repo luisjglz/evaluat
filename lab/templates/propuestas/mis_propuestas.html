@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Mis propuestas</h1>
+<table class="table table-hover">
+  <thead>
+    <tr><th>Tipo</th><th>Valor</th><th>Estado</th><th>Fecha</th></tr>
+  </thead>
+  <tbody>
+  {% for p in propuestas %}
+    <tr>
+      <td>{{ p.get_tipoElemento_display }}</td>
+      <td>{{ p.valor }}</td>
+      <td>{{ p.get_status_display }}</td>
+      <td>{{ p.created_at|date:"Y-m-d H:i" }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="4" class="text-muted">Sin propuestas.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -10,11 +10,7 @@
           <option value="{{ inst.id }}">{{ inst.nombre }}</option>
         {% endfor %}
       </select>
-      <button type="button"
-              class="btn btn-outline-secondary btn-sm btn-proponer"
-              data-prop-tipo="instrumento">
-        Proponer
-      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer" data-prop-tipo="instrumento">Proponer</button>
     </div>
   </td>
 
@@ -27,11 +23,7 @@
           <option value="{{ met.id }}">{{ met.nombre }}</option>
         {% endfor %}
       </select>
-      <button type="button"
-              class="btn btn-outline-secondary btn-sm btn-proponer"
-              data-prop-tipo="metodo">
-        Proponer
-      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer" data-prop-tipo="metodo">Proponer</button>
     </div>
   </td>
 
@@ -44,11 +36,7 @@
           <option value="{{ reac.id }}">{{ reac.nombre }}</option>
         {% endfor %}
       </select>
-      <button type="button"
-              class="btn btn-outline-secondary btn-sm btn-proponer"
-              data-prop-tipo="reactivo">
-        Proponer
-      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer" data-prop-tipo="reactivo">Proponer</button>
     </div>
   </td>
 
@@ -61,29 +49,81 @@
           <option value="{{ uni.id }}">{{ uni.nombre }}</option>
         {% endfor %}
       </select>
-      <button type="button"
-              class="btn btn-outline-secondary btn-sm btn-proponer"
-              data-prop-tipo="unidad">
-        Proponer
-      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer" data-prop-tipo="unidad">Proponer</button>
     </div>
   </td>
 
   <!-- Acciones -->
   <td>
-    <form class="form-configuracion" data-prueba-id="{{ prueba.id }}">
+    <form class="form-configuracion" data-config-form="1" data-prueba-id="{{ prueba.id }}">
       {% csrf_token %}
       <input type="hidden" name="prueba_id" value="{{ prueba.id }}">
-
-      <button type="button" class="btn btn-success btn-sm btn-aceptar-config btn-raise">
+      <button type="button" class="btn btn-success btn-sm btn-aceptar-config btn-raise" disabled>
         <span class="btn-text">Aceptar</span>
         <span class="spinner-border spinner-border-sm d-none" role="status"></span>
       </button>
-
-      <div class="config-status mt-1"></div>
     </form>
   </td>
 </tr>
+
+<!-- <script>
+(function () {
+  const row = document.currentScript.closest('tr');
+  const btn = row.querySelector('.btn-aceptar-config');
+  const selects = row.querySelectorAll('select[name="instrumento_id"],select[name="metodo_analitico_id"],select[name="reactivo_id"],select[name="unidad_de_medida_id"]');
+  const complete = ()=> Array.from(selects).every(s=>!!s.value);
+  const setState = ()=> { btn.disabled = !complete(); };
+  selects.forEach(s=>{ s.addEventListener('change', setState); s.addEventListener('input', setState); });
+  setState();
+
+  function getCookie(name){ const m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)'); return m?m.pop():''; }
+  function toggleLoading(loading){
+    const text = btn.querySelector('.btn-text'), sp = btn.querySelector('.spinner-border');
+    if (loading){ text.classList.add('d-none'); sp.classList.remove('d-none'); btn.disabled = true; }
+    else { text.classList.remove('d-none'); sp.classList.add('d-none'); btn.disabled = !complete(); }
+  }
+
+  btn.addEventListener('click', async ()=>{
+    if (!complete()) return;
+    toggleLoading(true);
+    try{
+      const fd = new FormData(row.querySelector('form[data-config-form="1"]'));
+      // añade selects al payload
+      selects.forEach(s=> fd.set(s.name, s.value));
+      // crear (save_config)
+      const resp = await fetch("{% url 'lab:save_config' %}", {
+        method:'POST',
+        headers:{'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With':'XMLHttpRequest'},
+        body: fd,
+        credentials:'same-origin'
+      });
+      const ct = resp.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await resp.json() : null;
+      if (!resp.ok || (data && data.success===false)) throw new Error((data && data.error) || 'Error al guardar');
+      // mover fila a configuradas
+      const cfgId = data && data.config_id ? data.config_id : null;
+      row.removeAttribute('data-prueba-id');
+      if (cfgId) row.setAttribute('data-config-id', String(cfgId));
+      // actualizar action a update
+      const frm = row.querySelector('form[data-config-form="1"]');
+      if (frm) frm.setAttribute('action', "{% url 'lab:update_config' 0 %}".replace('/0/','/'+(cfgId||'')+'/'));
+      const tgt = document.getElementById('tbody-configuradas') || document.querySelector('#tabla-configuradas tbody');
+      if (tgt) tgt.appendChild(row);
+      // feedback
+      window.bootstrap?.Modal?.getOrCreateInstance(document.getElementById('cfg-modal'))?.hide();
+    }catch(err){
+      // animación error
+      selects.forEach(s=>{ if(!s.value){ s.classList.add('select-invalid','shake'); setTimeout(()=>s.classList.remove('shake'), 260);} });
+      const modal = window.bootstrap?.Modal?.getOrCreateInstance(document.getElementById('cfg-modal'));
+      document.getElementById('cfg-modal-title').textContent = 'Error';
+      document.getElementById('cfg-modal-body').textContent = 'No se pudo guardar esta configuración.';
+      modal && modal.show();
+    }finally{
+      toggleLoading(false);
+    }
+  });
+})();
+</script>
 
 
 <script>
@@ -164,7 +204,7 @@ function toggleLoading(btn, loading) {
 
       try {
         const fd = new FormData();
-        fd.append('prueba_id', {{ prueba.id }});
+        fd.append('prueba_id', '{{ prueba.id }}');
         fd.append('accion', `proponer_${tipo}`);
         fd.append(`${tipo}_valor`, valor);
         fd.append(`${tipo}_descripcion`, descripcion);
@@ -290,7 +330,7 @@ function agregarPropuestaAlDOM(propuesta) {
   `;
   tbody.prepend(tr); // insertar al inicio para visibilidad inmediata
 }
-</script>
+</script> -->
 
 
 

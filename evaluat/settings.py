@@ -12,16 +12,38 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 from pathlib import Path
 import os
+import environ
+from django.urls import reverse_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+env = environ.Env(
+    DEBUG=(bool, False),
+)
+env.read_env(os.path.join(BASE_DIR, '.env'))
+
+DEBUG = env('DEBUG')
+SECRET_KEY = env('SECRET_KEY')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost'])
+
+# Email
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@localhost')
+SERVER_EMAIL = os.environ.get('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '15'))
+
+
 # Authentication settings for login
-LOGIN_URL = 'homepage'      # dónde redirige login_required
-LOGIN_REDIRECT_URL = 'select_lab'   # a dónde ir si no hay ?next=
-LOGOUT_REDIRECT_URL = 'homepage'    # opcional
-
-
+LOGIN_URL = 'lab:homepage'  # o LOGIN_URL = reverse_lazy('lab:homepage')
+LOGIN_REDIRECT_URL = 'lab:select_lab'
+LOGOUT_REDIRECT_URL = 'lab:homepage'
 
 
 # Quick-start development settings - unsuitable for production
@@ -146,3 +168,31 @@ MEDIA_ROOT = BASE_DIR / 'media'  # configurar en PythonAnywhere y mapear como St
 # INSTALLED_APPS += ['storages']
 # DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 # Configurar credenciales y bucket en variables de entorno
+
+# === Email settings ===
+# Backend por defecto: SMTP en producción
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+
+# Host/puerto SMTP (usa los datos del proveedor)
+# Ejemplos comunes: puerto 587 => TLS, puerto 465 => SSL
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.tu-proveedor.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+
+# Credenciales
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'cuenta@tu-dominio.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+# Seguridad (elige solo una: TLS con 587 o SSL con 465)
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
+# Nota: no actives ambas a la vez. Si usas 465, pon EMAIL_USE_SSL=true y EMAIL_USE_TLS=false.
+
+# Remitentes por defecto
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+SERVER_EMAIL = os.environ.get('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
+EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '[Evaluat] ')
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '15'))
+
+# Backend de consola para desarrollo (imprime emails en consola)
+if DEBUG and os.environ.get('EMAIL_DEBUG_CONSOLE', 'false').lower() == 'true':
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

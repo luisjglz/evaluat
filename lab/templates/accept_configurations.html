@@ -1,611 +1,756 @@
 {% load static %}
-<div class="container mt-4 text-body">
+<div id="cfg-root"
+     data-url-save="{% url 'lab:save_config' %}"
+     data-url-update-template="{% url 'lab:update_config' 0 %}"
+     data-allow-edit-now="{{ allow_edit_now|yesno:'1,0' }}">
   <h2 class="mb-4">Configuraciones de Pruebas del Laboratorio</h2>
 
   {% if messages %}
-    <div>
+    <div class="mb-3">
       {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} mb-3">{{ message }}</div>
+        <div class="alert alert-{{ message.tags }} mb-2">{{ message }}</div>
       {% endfor %}
     </div>
   {% endif %}
 
-  <!-- Contenedor de mensajes AJAX -->
   <div id="ajax-messages" class="mb-3"></div>
   <script>
-    window.showGlobalMessage = function(type, text) {
-      const box = document.getElementById('ajax-messages');
-      if (!box) return;
-      const alert = document.createElement('div');
-      alert.className = `alert alert-${type}`;
-      alert.textContent = text;
-      box.innerHTML = '';
-      box.appendChild(alert);
-      setTimeout(() => { if (alert.parentNode) alert.remove(); }, 6000);
+    window.showGlobalMessage = function(type, text){
+      const box = document.getElementById('ajax-messages'); if(!box) return;
+      const el = document.createElement('div'); el.className = 'alert alert-'+type; el.textContent = text;
+      box.innerHTML = ''; box.appendChild(el); setTimeout(()=>{ if(el.parentNode) el.remove(); }, 6000);
     };
   </script>
 
   <!-- Pruebas pendientes -->
-  <h4 class="mb-3">Pruebas pendientes por configurar</h4>
-  <div class="table-responsive">
-    <table class="table table-striped align-middle">
-      <thead class="table-light">
-        <tr>
-          <th>Prueba</th>
-          <th>Instrumento</th>
-          <th>Método</th>
-          <th>Reactivo</th>
-          <th>Unidad de Medida</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for prueba in pending_pruebas %}
-          {% include "partials/_crear_config_prueba_row.html" with prueba=prueba %}
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="card mt-2">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Pruebas pendientes por configurar</span>
+      <button id="btn-guardar-todo-config" type="button" class="btn btn-success btn-sm">Guardar todo</button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Prueba</th>
+              <th>Instrumento</th>
+              <th>Método</th>
+              <th>Reactivo</th>
+              <th>Unidad de Medida</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-pendientes">
+            {% if pending_pruebas %}
+              {% for prueba in pending_pruebas %}
+                {% include "./partials/_crear_config_prueba_row.html" %}
+              {% endfor %}
+            {% else %}
+              <tr data-placeholder="pendientes-vacio"><td colspan="6" class="text-center text-muted">No hay pruebas pendientes.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
-  {% if not pending_pruebas %}
-    <p class="text-muted">No hay pruebas pendientes.</p>
-  {% endif %}
-
-  <hr class="my-4" />
 
   <!-- Pruebas configuradas -->
-  <h4 class="mb-3">Pruebas configuradas</h4>
-  <div class="table-responsive">
-    <table class="table table-bordered align-middle">
-      <thead class="table-light">
-        <tr>
-          <th>Prueba</th>
-          <th>Instrumento</th>
-          <th>Método</th>
-          <th>Reactivo</th>
-          <th>Unidad</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for row in accepted_configs_wrapped %}
-        {% include "./partials/_config_row.html" with config=row.obj can_edit=row.can_edit %}
-      {% empty %}
-        <tr>
-          <td colspan="6" class="text-muted">No hay configuraciones aceptadas.</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-    </table>
-  </div>
-  {% if not accepted_configs_wrapped %}
-    <p class="text-muted">No hay configuraciones aceptadas.</p>
-  {% endif %}
-
-  <hr class="my-4" />
-
-  <!-- Propuestas -->
-  <h4 class="mb-3">Propuestas de propiedades</h4>
-  <div id="propuestas-wrapper" class="table-responsive">
-    {% if propuestas %}
-      <table id="tabla-propuestas" class="table table-hover align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Tipo</th>
-            <th>Valor</th>
-            <th>Descripción</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="propuestas-body">
-          {% for prop in propuestas %}
-            {% include "partials/_propuesta_row.html" with prop=prop %}
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p id="sin-propuestas" class="text-muted">No hay propuestas registradas.</p>
-      <table id="tabla-propuestas" class="table table-hover align-middle" style="display:none;">
-        <thead class="table-light">
-          <tr>
-            <th>Tipo</th>
-            <th>Valor</th>
-            <th>Descripción</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="propuestas-body"></tbody>
-      </table>
-    {% endif %}
+  <div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Pruebas configuradas</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table id="tabla-configuradas" class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Prueba</th>
+              <th>Instrumento</th>
+              <th>Método</th>
+              <th>Reactivo</th>
+              <th>Unidad</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-configuradas">
+            {% if accepted_configs_wrapped %}
+              {% for row in accepted_configs_wrapped %}
+                {% include "./partials/_config_row.html" with config=row.obj can_edit=row.can_edit %}
+              {% endfor %}
+            {% else %}
+              <tr data-placeholder="config-vacio"><td colspan="6" class="text-center text-muted">No hay configuraciones aceptadas.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
-  <!-- Modal Editar Configuración -->
+  <!-- Propuestas (solo del usuario activo) -->
+  <div class="card mt-4">
+    <div class="card-header">Propuestas de propiedades</div>
+    <div class="card-body p-0">
+      {% if propuestas %}
+        <div class="table-responsive">
+          <table id="tabla-propuestas" class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr><th>Tipo</th><th>Valor</th><th>Descripción</th><th>Status</th></tr>
+            </thead>
+            <tbody id="propuestas-body">
+              {% for prop in propuestas %}
+                {% if prop.propuesto_por_id == user.id %}
+                  {% include "./partials/_propuesta_row.html" with prop=prop %}
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div id="sin-propuestas" class="p-3 text-muted">No hay propuestas registradas.</div>
+        <table id="tabla-propuestas" class="table table-sm align-middle mb-0" style="display:none;">
+          <thead class="table-light">
+            <tr><th>Tipo</th><th>Valor</th><th>Descripción</th><th>Status</th></tr>
+          </thead>
+          <tbody id="propuestas-body"></tbody>
+        </table>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Modal Editar configuración -->
   <div class="modal fade" id="editConfigModal" tabindex="-1" aria-labelledby="editConfigLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="editConfigLabel">Editar configuración</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <form id="editConfigForm" autocomplete="off">
-            {% csrf_token %}
-            <input type="hidden" name="config_id" id="ec-config-id">
-            <div class="row g-3">
-              <div class="col-12 col-md-6">
-                <label class="form-label">Instrumento</label>
-                <div class="d-flex gap-2">
-                  <select class="form-select" name="instrumento_id" id="ec-inst">
-                    <option value="">Seleccionar</option>
-                    {% for inst in instrumentos %}
-                      <option value="{{ inst.id }}">{{ inst.nombre }}</option>
-                    {% endfor %}
-                  </select>
-                  <button type="button"
-                          class="btn btn-outline-secondary btn-sm btn-proponer"
-                          data-prop-tipo="instrumento"
-                          data-target-select="#ec-inst">
-                    Proponer
-                  </button>
-                </div>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label">Método analítico</label>
-                <div class="d-flex gap-2">
-                  <select class="form-select" name="metodo_analitico_id" id="ec-met">
-                    <option value="">Seleccionar</option>
-                    {% for m in metodos %}
-                      <option value="{{ m.id }}">{{ m.nombre }}</option>
-                    {% endfor %}
-                  </select>
-                  <button type="button"
-                          class="btn btn-outline-secondary btn-sm btn-proponer"
-                          data-prop-tipo="metodo"
-                          data-target-select="#ec-met">
-                    Proponer
-                  </button>
-                </div>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label">Reactivo</label>
-                <div class="d-flex gap-2">
-                  <select class="form-select" name="reactivo_id" id="ec-reac">
-                    <option value="">Seleccionar</option>
-                    {% for r in reactivos %}
-                      <option value="{{ r.id }}">{{ r.nombre }}</option>
-                    {% endfor %}
-                  </select>
-                  <button type="button"
-                          class="btn btn-outline-secondary btn-sm btn-proponer"
-                          data-prop-tipo="reactivo"
-                          data-target-select="#ec-reac">
-                    Proponer
-                  </button>
-                </div>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label">Unidad de medida</label>
-                <div class="d-flex gap-2">
-                  <select class="form-select" name="unidad_de_medida_id" id="ec-uni">
-                    <option value="">Seleccionar</option>
-                    {% for u in unidades %}
-                      <option value="{{ u.id }}">{{ u.nombre }}</option>
-                    {% endfor %}
-                  </select>
-                  <button type="button"
-                          class="btn btn-outline-secondary btn-sm btn-proponer"
-                          data-prop-tipo="unidad"
-                          data-target-select="#ec-uni">
-                    Proponer
-                  </button>
-                </div>
+    <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editConfigLabel">Editar configuración</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editConfigForm" autocomplete="off">
+          {% csrf_token %}
+          <input type="hidden" name="config_id" id="ec-config-id">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Instrumento</label>
+              <div class="d-flex gap-2">
+                <select class="form-select" name="instrumento_id" id="ec-inst">
+                  <option value="">Seleccionar</option>
+                  {% for inst in instrumentos %}<option value="{{ inst.id }}">{{ inst.nombre }}</option>{% endfor %}
+                </select>
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer"
+                        data-prop-tipo="instrumento" data-target-select="#ec-inst">Proponer</button>
               </div>
             </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <div class="me-auto small text-muted" id="ec-status"></div>
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-success btn-raise" id="ec-save-btn">
-            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-            Guardar cambios
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal reutilizable para Proponer Propiedad -->
-  <div class="modal fade" id="proposePropModal" tabindex="-1" aria-labelledby="proposePropLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="proposePropLabel">Proponer <span id="pp-tipo-label"></span></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <div id="pp-warning" class="alert alert-warning d-none" role="alert">
-            Al proponer un elemento se cancelará la edición de esta configuración y se creará una propuesta pendiente.
+            <div class="col-12 col-md-6">
+              <label class="form-label">Método analítico</label>
+              <div class="d-flex gap-2">
+                <select class="form-select" name="metodo_analitico_id" id="ec-met">
+                  <option value="">Seleccionar</option>
+                  {% for m in metodos %}<option value="{{ m.id }}">{{ m.nombre }}</option>{% endfor %}
+                </select>
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer"
+                        data-prop-tipo="metodo" data-target-select="#ec-met">Proponer</button>
+              </div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Reactivo</label>
+              <div class="d-flex gap-2">
+                <select class="form-select" name="reactivo_id" id="ec-reac">
+                  <option value="">Seleccionar</option>
+                  {% for r in reactivos %}<option value="{{ r.id }}">{{ r.nombre }}</option>{% endfor %}
+                </select>
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer"
+                        data-prop-tipo="reactivo" data-target-select="#ec-reac">Proponer</button>
+              </div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Unidad de medida</label>
+              <div class="d-flex gap-2">
+                <select class="form-select" name="unidad_de_medida_id" id="ec-uni">
+                  <option value="">Seleccionar</option>
+                  {% for u in unidades %}<option value="{{ u.id }}">{{ u.nombre }}</option>{% endfor %}
+                </select>
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-proponer"
+                        data-prop-tipo="unidad" data-target-select="#ec-uni">Proponer</button>
+              </div>
+            </div>
           </div>
-
-          <form id="proposePropForm" autocomplete="off">
-            {% csrf_token %}
-            <input type="hidden" name="tipo" id="pp-tipo">
-            <input type="hidden" name="__target_select" id="pp-target">
-            <div class="mb-3">
-              <label class="form-label">Valor</label>
-              <input type="text" class="form-control" name="valor" id="pp-valor" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Descripción (opcional)</label>
-              <textarea class="form-control" name="descripcion" id="pp-descripcion" rows="2"></textarea>
-            </div>
-          </form>
-          <div class="small text-muted" id="pp-status"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-warning" id="pp-send-btn">Enviar propuesta</button>
-        </div>
+        </form>
       </div>
-    </div>
+      <div class="modal-footer">
+        <div class="me-auto small text-muted" id="ec-status"></div>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-success btn-raise" id="ec-save-btn">
+          <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+          Guardar cambios
+        </button>
+      </div>
+    </div></div>
   </div>
 
-  <!-- Punto de montaje de URL para AJAX -->
-  <div id="propose-url-anchor" data-propose-url="{% url 'lab:propose_property' %}"></div>
+  <!-- Modal Proponer Propiedad -->
+  <div class="modal fade" id="proposePropModal" tabindex="-1" aria-labelledby="proposePropLabel" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="proposePropLabel">Proponer <span id="pp-tipo-label"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="pp-warning" class="alert alert-warning d-none">Al proponer se cerrará la edición actual.</div>
+        <form id="proposePropForm" autocomplete="off">
+          {% csrf_token %}
+          <input type="hidden" name="tipo" id="pp-tipo">
+          <input type="hidden" name="__target_select" id="pp-target">
+          <div class="mb-3">
+            <label class="form-label">Valor</label>
+            <input type="text" class="form-control" name="valor" id="pp-valor" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descripción (opcional)</label>
+            <textarea class="form-control" name="descripcion" id="pp-descripcion" rows="2"></textarea>
+          </div>
+        </form>
+        <div class="small" id="pp-status"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning" id="pp-send-btn">Enviar propuesta</button>
+      </div>
+    </div></div>
+  </div>
 
+  <!-- URL para AJAX de propuestas -->
+  <div id="propose-url-anchor" data-propose-url="{% url 'lab:propose_property' %}"></div>
 </div>
 
+<!-- Modal feedback -->
+<div id="cfg-modal" class="modal fade" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header py-2"><h6 class="modal-title" id="cfg-modal-title">Aviso</h6>
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body" id="cfg-modal-body"></div>
+    <div class="modal-footer py-2"><button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">OK</button></div>
+  </div></div>
+</div>
 
+<style>
+@keyframes shake-x { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+.select-invalid { border-color:#dc3545 !important; box-shadow:0 0 0 .15rem rgba(220,53,69,.25) !important; }
+.shake { animation: shake-x .18s ease-in-out 0s 2; }
+/* Soporte básico para tema oscuro (Bootstrap 5.3 con data-bs-theme) */
+:root { color-scheme: light dark; }
+</style>
 
 <script>
 (function(){
-  // Helpers CSRF (Django)
-  function getCookie(name) {
-    let v = null;
-    if (document.cookie && document.cookie !== '') {
-      const cs = document.cookie.split(';');
-      for (let i=0;i<cs.length;i++){
-        const c = cs[i].trim();
-        if (c.substring(0, name.length + 1) === (name + '=')) {
-          v = decodeURIComponent(c.substring(name.length + 1));
-          break;
-        }
+  // Modal feedback reutilizable
+  const modalEl = document.getElementById('cfg-modal');
+  const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+  function showModal(title, html){
+    if (!modalEl || !modal) return;
+    document.getElementById('cfg-modal-title').textContent = title || 'Aviso';
+    document.getElementById('cfg-modal-body').innerHTML = html || '';
+    modal.show();
+  }
+
+  // Banner de ventana cerrada
+  let editBanner = null;
+  function ensureEditBanner(text, tone){
+    if (!editBanner){
+      editBanner = document.createElement('div');
+      editBanner.className = 'alert my-2';
+      const h2 = document.querySelector('h2');
+      if (h2 && h2.parentNode) h2.parentNode.insertBefore(editBanner, h2.nextSibling);
+      else document.body.prepend(editBanner);
+    }
+    editBanner.className = `alert my-2 alert-${tone||'warning'}`;
+    editBanner.textContent = text || 'La ventana de edición está cerrada actualmente.';
+  }
+  function removeEditBanner(){
+    if (editBanner && editBanner.parentNode) editBanner.parentNode.removeChild(editBanner);
+    editBanner = null;
+  }
+
+  // Placeholders de vacíos
+  function updateEmptyStates(){
+    const tbPend = document.getElementById('tbody-pendientes');
+    const tbConf = document.getElementById('tbody-configuradas');
+
+    if (tbPend){
+      const hasPend = !!tbPend.querySelector('tr[data-prueba-id]');
+      const ph = tbPend.querySelector('tr[data-placeholder="pendientes-vacio"]');
+      if (!hasPend && !ph){
+        const tr = document.createElement('tr'); tr.setAttribute('data-placeholder','pendientes-vacio');
+        tr.innerHTML = '<td colspan="6" class="text-center text-muted">No hay pruebas pendientes.</td>';
+        tbPend.appendChild(tr);
+      }
+      if (hasPend && ph){ ph.remove(); }
+    }
+    if (tbConf){
+      const hasConf = !!tbConf.querySelector('tr[data-config-id]');
+      const ph = tbConf.querySelector('tr[data-placeholder="config-vacio"]');
+      if (hasConf && ph){ ph.remove(); }
+      if (!hasConf && !ph){
+        const tr = document.createElement('tr'); tr.setAttribute('data-placeholder','config-vacio');
+        tr.innerHTML = '<td colspan="6" class="text-center text-muted">No hay configuraciones aceptadas.</td>';
+        tbConf.appendChild(tr);
       }
     }
-    return v;
   }
-  function getCSRFToken(){ return getCookie('csrftoken') || (document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''); }
 
-  const modalEl = document.getElementById('editConfigModal');
-  const form    = document.getElementById('editConfigForm');
-  const saveBtn = document.getElementById('ec-save-btn');
-  const status  = document.getElementById('ec-status');
-  let currentRow = null;
+  // URLs base y banderas
+  const root = document.getElementById('cfg-root');
+  const URL_SAVE = root?.dataset.urlSave || '';
+  const URL_UPDATE_TPL = root?.dataset.urlUpdateTemplate || '';
+  let   ALLOW_EDIT_NOW = (root?.dataset.allowEditNow || '0') === '1';
 
-  // Abrir modal y precargar
+  // CSRF
+  function getCookie(name){ const m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)'); return m?m.pop():''; }
+
+  // Helpers UI por fila
+  function rowComplete(row){
+    const q=n=>row.querySelector(`select[name="${n}"]`);
+    const ins=q('instrumento_id'), met=q('metodo_analitico_id'), rea=q('reactivo_id'), uni=q('unidad_de_medida_id');
+    return ins && met && rea && uni && ins.value && met.value && rea.value && uni.value;
+  }
+  function markInvalid(row){
+    ['instrumento_id','metodo_analitico_id','reactivo_id','unidad_de_medida_id'].forEach(n=>{
+      const el=row.querySelector(`select[name="${n}"]`); if(el && !el.value){ el.classList.add('select-invalid','shake'); setTimeout(()=>el.classList.remove('shake'), 260); }
+    });
+  }
+  function clearInvalid(row){ row.querySelectorAll('.select-invalid').forEach(el=>el.classList.remove('select-invalid')); }
+  function toggleLoading(btn, on){ const t=btn?.querySelector('.btn-text'), sp=btn?.querySelector('.spinner-border'); if(!btn||!t||!sp) return; if(on){t.classList.add('d-none'); sp.classList.remove('d-none'); btn.disabled=true;} else {t.classList.remove('d-none'); sp.classList.add('d-none');} }
+
+  // Convierte la fila en "configurada" (solo lectura) sin recarga
+  function morphRowToConfigured(row){
+    try{
+      // Nombre de prueba: asegura clase para obtenerlo luego
+      const firstCell = row.querySelector('td');
+      if (firstCell) firstCell.classList.add('cell-prueba');
+
+      // Mapea cada select a su celda de texto
+      const mappings = [
+        {name:'instrumento_id', cls:'cell-instrumento'},
+        {name:'metodo_analitico_id', cls:'cell-metodo'},
+        {name:'reactivo_id', cls:'cell-reactivo'},
+        {name:'unidad_de_medida_id', cls:'cell-unidad'},
+      ];
+      mappings.forEach(m=>{
+        const sel = row.querySelector(`select[name="${m.name}"]`);
+        if (!sel) return;
+        const td = sel.closest('td') || sel.parentElement || null;
+        const txt = sel.options[sel.selectedIndex]?.text || '';
+        if (td){
+          td.classList.add(m.cls, 'cell-view');
+          td.textContent = txt || '-';
+        }
+      });
+
+      // Elimina formularios/selects residuales
+      row.querySelectorAll('form[data-config-form="1"]').forEach(f=>f.remove());
+      row.querySelectorAll('select[name]').forEach(s=>s.remove());
+
+      // Clase como fila configurada
+      row.classList.add('config-row');
+
+      // Quita "Aceptar" si hubiera quedado
+      row.querySelectorAll('.btn-aceptar-config').forEach(b=>b.remove());
+    }catch(e){ /* no-op */ }
+  }
+
+  // Asegura botón Editar y modo lectura en configuradas
+  function ensureEditControls(row){
+    if (!ALLOW_EDIT_NOW) return;
+    if (!row.getAttribute('data-config-id')) return;
+
+    // Modo solo lectura
+    morphRowToConfigured(row);
+
+    // Evita duplicados
+    if (row.querySelector('.btn-open-edit-modal')) return;
+
+    // Prepara ids actuales para precargar modal
+    const instId = row.getAttribute('data-inst-id') || '';
+    const metId  = row.getAttribute('data-met-id')  || '';
+    const reacId = row.getAttribute('data-reac-id') || '';
+    const uniId  = row.getAttribute('data-uni-id')  || '';
+
+    // Celda de acciones
+    let actions = row.querySelector('.cell-actions');
+    if (!actions){ actions = document.createElement('td'); actions.className='cell-actions'; row.appendChild(actions); }
+
+    // Botón Editar
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-primary btn-sm btn-raise btn-open-edit-modal';
+    btn.setAttribute('data-config-id', row.getAttribute('data-config-id') || '');
+    if (instId) btn.setAttribute('data-inst-id', instId);
+    if (metId)  btn.setAttribute('data-met-id',  metId);
+    if (reacId) btn.setAttribute('data-reac-id', reacId);
+    if (uniId)  btn.setAttribute('data-uni-id',  uniId);
+    btn.textContent = 'Editar';
+    actions.appendChild(btn);
+  }
+
+  // Bloquear/Desbloquear edición en caliente
+  function lockEditingUI(){
+    // Remueve botones Editar y muestra banner
+    document.querySelectorAll('.btn-open-edit-modal').forEach(b=>b.remove());
+    ensureEditBanner('La ventana de edición está cerrada; contacta a tu administrador si requieres cambios.', 'warning');
+  }
+  function unlockEditingUI(){
+    removeEditBanner();
+    document.querySelectorAll('tr[data-config-id]').forEach(r=>ensureEditControls(r));
+  }
+  function applyEditPermission(canEdit){
+    ALLOW_EDIT_NOW = !!canEdit;
+    if (ALLOW_EDIT_NOW) unlockEditingUI(); else lockEditingUI();
+  }
+
+  // Previene doble envío por-fila
+  const savingRows = new WeakSet();
+
+  // Cablea guardado individual (pendientes y configuradas)
+  function wireRow(row){
+    const btn = row.querySelector('.btn-aceptar-config');
+    // Filas ya configuradas: asegurar controles y salir
+    if(!btn){
+      if (row.hasAttribute('data-config-id')) ensureEditControls(row);
+      return;
+    }
+
+    const setState=()=>{ clearInvalid(row); btn.disabled = !rowComplete(row); };
+    row.querySelectorAll('select[name="instrumento_id"],select[name="metodo_analitico_id"],select[name="reactivo_id"],select[name="unidad_de_medida_id"]').forEach(s=>{
+      s.addEventListener('change', setState); s.addEventListener('input', setState);
+    });
+    setState();
+
+    btn.addEventListener('click', async ()=>{
+      if (savingRows.has(row)) return;
+      if (!rowComplete(row)){ markInvalid(row); showModal('Advertencia','Completa los 4 campos antes de aceptar.'); return; }
+      savingRows.add(row);
+      toggleLoading(btn, true);
+      let savedOk = false;
+      try{
+        const form = row.querySelector('form[data-config-form="1"]');
+        const fd = new FormData(form);
+        ['instrumento_id','metodo_analitico_id','reactivo_id','unidad_de_medida_id'].forEach(n=>{
+          const el=row.querySelector(`select[name="${n}"]`); if(el) fd.set(n, el.value);
+        });
+
+        let url='', headers={'X-CSRFToken': getCookie('csrftoken')};
+        if (row.hasAttribute('data-config-id')){
+          url = row.getAttribute('data-update-url') || form.getAttribute('action') || '';
+        } else {
+          url = URL_SAVE; headers['X-Requested-With']='XMLHttpRequest';
+        }
+        if (!url) throw new Error('URL inválida');
+
+        const resp = await fetch(url, { method:'POST', headers, body: fd, credentials:'same-origin' });
+        const ct=resp.headers.get('content-type')||'';
+        const isJSON = ct.includes('application/json');
+        const data = isJSON ? await resp.json().catch(()=>null) : null;
+
+        // Considera éxito si 2xx y no hay error lógico en JSON
+        if (resp.ok && !(data && data.success === false)) {
+          // Si era creación, completar wiring
+          if (!row.hasAttribute('data-config-id')){
+            const cfgId = data && data.config_id ? data.config_id : null;
+            row.removeAttribute('data-prueba-id');
+            if (cfgId) row.setAttribute('data-config-id', String(cfgId));
+            if (cfgId && URL_UPDATE_TPL){
+              const u = URL_UPDATE_TPL.replace('/0/','/'+cfgId+'/');
+              row.setAttribute('data-update-url', u);
+              form.setAttribute('action', u);
+            }
+            // Persistir ids seleccionados como data-* para el modal
+            ['instrumento_id','metodo_analitico_id','reactivo_id','unidad_de_medida_id'].forEach(n=>{
+              const v = row.querySelector(`select[name="${n}"]`)?.value || '';
+              const map = {instrumento_id:'data-inst-id',metodo_analitico_id:'data-met-id',reactivo_id:'data-reac-id',unidad_de_medida_id:'data-uni-id'};
+              if (v) row.setAttribute(map[n], v);
+            });
+            // Mover a configuradas y forzar modo lectura
+            const tgt=document.getElementById('tbody-configuradas')||document.querySelector('#tabla-configuradas tbody');
+            if (tgt) tgt.appendChild(row);
+            morphRowToConfigured(row);
+            ensureEditControls(row);
+            updateEmptyStates();
+          } else {
+            // Actualización “silenciosa”
+            morphRowToConfigured(row);
+            ensureEditControls(row);
+          }
+          savedOk = true;
+        } else {
+          // Si falló, pero ya existe config-id (persistencia previa), trata como éxito optimista
+          if (!row.hasAttribute('data-prueba-id') && row.hasAttribute('data-config-id')){
+            morphRowToConfigured(row);
+            ensureEditControls(row);
+            updateEmptyStates();
+            savedOk = true;
+          } else {
+            throw new Error((data && (data.error||data.message)) || 'Error al guardar');
+          }
+        }
+
+        // Feedback y estado del botón original
+        btn.disabled=true; btn.classList.add('btn-outline-secondary'); const t=btn.querySelector('.btn-text'); if (t) t.textContent='Guardada';
+        showModal('Éxito','Configuración guardada.');
+      }catch(e){
+        // Si la fila quedó configurada pese al error (p. ej. lock), informar éxito
+        if (!savedOk && row.hasAttribute('data-config-id')){
+          morphRowToConfigured(row);
+          ensureEditControls(row);
+          updateEmptyStates();
+          showModal('Éxito','Configuración guardada.');
+        } else {
+          markInvalid(row);
+          showModal('Error','No se pudo guardar esta configuración.');
+        }
+      } finally {
+        toggleLoading(btn,false);
+        savingRows.delete(row);
+      }
+    });
+  }
+
+  // Inicialización de filas
+  document.querySelectorAll('tr[data-prueba-id], tr[data-config-id]').forEach(wireRow);
+  if (ALLOW_EDIT_NOW){
+    document.querySelectorAll('tr[data-config-id]').forEach(r=>{
+      morphRowToConfigured(r);
+      ensureEditControls(r);
+    });
+  } else {
+    ensureEditBanner('La ventana de edición está cerrada; verás solo lectura hasta que un administrador la reabra.', 'warning');
+  }
+  updateEmptyStates();
+
+  // Guardar todo
+  document.getElementById('btn-guardar-todo-config')?.addEventListener('click', async ()=>{
+    const rows = Array.from(document.querySelectorAll('tr[data-prueba-id], tr[data-config-id]'));
+    const completas = rows.filter(rowComplete);
+    if (!completas.length){ rows.forEach(markInvalid); showModal('Advertencia','No hay configuraciones válidas para guardar.'); return; }
+    let ok=0, fail=0;
+    for (const row of completas){
+      if (savingRows.has(row)) continue;
+      const btn=row.querySelector('.btn-aceptar-config');
+      if (btn) toggleLoading(btn,true);
+      savingRows.add(row);
+      try{
+        const form=row.querySelector('form[data-config-form="1"]');
+        const fd=new FormData(form);
+        ['instrumento_id','metodo_analitico_id','reactivo_id','unidad_de_medida_id'].forEach(n=>{
+          const el=row.querySelector(`select[name="${n}"]`); if(el) fd.set(n, el.value);
+        });
+        let url='', headers={'X-CSRFToken': getCookie('csrftoken')};
+        if (row.hasAttribute('data-config-id')){
+          url=row.getAttribute('data-update-url')||form.getAttribute('action')||'';
+        } else {
+          url=URL_SAVE; headers['X-Requested-With']='XMLHttpRequest';
+        }
+        if (!url) throw new Error('URL inválida');
+
+        const resp=await fetch(url,{method:'POST', headers, body:fd, credentials:'same-origin'});
+        const ct=resp.headers.get('content-type')||''; const isJSON=ct.includes('application/json'); const data=isJSON?await resp.json().catch(()=>null):null;
+
+        if (resp.ok && !(data && data.success===false)) {
+          if (!row.hasAttribute('data-config-id')){
+            const cfgId=data && data.config_id ? data.config_id : null;
+            row.removeAttribute('data-prueba-id');
+            if (cfgId) row.setAttribute('data-config-id', String(cfgId));
+            if (cfgId && URL_UPDATE_TPL){
+              const u=URL_UPDATE_TPL.replace('/0/','/'+cfgId+'/');
+              row.setAttribute('data-update-url', u);
+              form.setAttribute('action', u);
+            }
+            ['instrumento_id','metodo_analitico_id','reactivo_id','unidad_de_medida_id'].forEach(n=>{
+              const v=row.querySelector(`select[name="${n}"]`)?.value||'';
+              const map={instrumento_id:'data-inst-id',metodo_analitico_id:'data-met-id',reactivo_id:'data-reac-id',unidad_de_medida_id:'data-uni-id'};
+              if(v) row.setAttribute(map[n], v);
+            });
+            const tgt=document.getElementById('tbody-configuradas')||document.querySelector('#tabla-configuradas tbody');
+            if (tgt) tgt.appendChild(row);
+          }
+          morphRowToConfigured(row);
+          ensureEditControls(row);
+          if (btn){ btn.disabled=true; btn.classList.add('btn-outline-secondary'); const t=btn.querySelector('.btn-text'); if (t) t.textContent='Guardada'; }
+          ok++;
+        } else {
+          // Si ya quedó con config-id, aceptar como éxito optimista
+          if (!row.hasAttribute('data-prueba-id') && row.hasAttribute('data-config-id')){
+            morphRowToConfigured(row);
+            ensureEditControls(row);
+            ok++;
+          } else {
+            fail++; markInvalid(row);
+          }
+        }
+      }catch(e){ fail++; markInvalid(row); }
+      finally{
+        if (btn) toggleLoading(btn,false);
+        savingRows.delete(row);
+      }
+    }
+    updateEmptyStates();
+    showModal(fail?'Advertencia':'Éxito', fail?'Algunas filas no se guardaron.':'Guardado general completado.');
+  });
+
+  // Edición (modal)
+  const editModalEl=document.getElementById('editConfigModal');
+  const editModal = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+  const editForm=document.getElementById('editConfigForm');
+  const ecSaveBtn=document.getElementById('ec-save-btn');
+  const ecStatus=document.getElementById('ec-status');
+  let currentRow=null;
+
   document.addEventListener('click', function(e){
-    const btn = e.target.closest('.btn-open-edit-modal');
-    if (!btn) return;
-    const configId = btn.getAttribute('data-config-id');
-    const instId   = btn.getAttribute('data-inst-id') || '';
-    const metId    = btn.getAttribute('data-met-id')  || '';
-    const reacId   = btn.getAttribute('data-reac-id') || '';
-    const uniId    = btn.getAttribute('data-uni-id')  || '';
+    const btn=e.target.closest('.btn-open-edit-modal'); if(!btn) return;
+    currentRow = btn.closest('.config-row') || btn.closest('tr');
 
-    // Guardar fila actual
-    currentRow = btn.closest('.config-row');
+    // Ids y título
+    const cfgId = btn.getAttribute('data-config-id') || currentRow?.getAttribute('data-config-id') || '';
+    const instId = btn.getAttribute('data-inst-id') || currentRow?.getAttribute('data-inst-id') || '';
+    const metId  = btn.getAttribute('data-met-id')  || currentRow?.getAttribute('data-met-id')  || '';
+    const reacId = btn.getAttribute('data-reac-id') || currentRow?.getAttribute('data-reac-id') || '';
+    const uniId  = btn.getAttribute('data-uni-id')  || currentRow?.getAttribute('data-uni-id')  || '';
 
-    // Cargar valores al modal
-    document.getElementById('ec-config-id').value = configId;
+    const firstCell = currentRow?.querySelector('.cell-prueba, td');
+    const pruebaName = (firstCell?.textContent || '').trim();
+    const titleEl = document.getElementById('editConfigLabel');
+    if (titleEl){ titleEl.textContent = `Editando la configuración de la prueba: ${pruebaName}`; }
+
+    document.getElementById('ec-config-id').value = cfgId;
     document.getElementById('ec-inst').value = instId;
     document.getElementById('ec-met').value  = metId;
     document.getElementById('ec-reac').value = reacId;
     document.getElementById('ec-uni').value  = uniId;
 
-    status.textContent = '';
+    ecStatus.textContent='';
+    editModal && editModal.show();
   });
 
-  // Guardar cambios
-  saveBtn.addEventListener('click', async function(){
+  ecSaveBtn?.addEventListener('click', async ()=>{
     if (!currentRow) return;
-
-    const url = currentRow.dataset.updateUrl;
-    const fd  = new FormData(form);
-    // Validación mínima
-    const faltantes = [];
-    if (!fd.get('instrumento_id'))        faltantes.push('Instrumento');
-    if (!fd.get('metodo_analitico_id'))   faltantes.push('Método Analítico');
-    if (!fd.get('reactivo_id'))           faltantes.push('Reactivo');
-    if (!fd.get('unidad_de_medida_id'))   faltantes.push('Unidad de Medida');
-    if (faltantes.length) {
-      status.textContent = 'Campos faltantes: ' + faltantes.join(', ');
-      return;
-    }
-
-    saveBtn.disabled = true;
-    saveBtn.querySelector('.spinner-border').classList.remove('d-none');
+    const url = currentRow.getAttribute('data-update-url') || currentRow.querySelector('form[data-config-form="1"]')?.getAttribute('action') || '';
+    const fd = new FormData(editForm);
+    const falt=[];
+    if(!fd.get('instrumento_id')) falt.push('Instrumento');
+    if(!fd.get('metodo_analitico_id')) falt.push('Método Analítico');
+    if(!fd.get('reactivo_id')) falt.push('Reactivo');
+    if(!fd.get('unidad_de_medida_id')) falt.push('Unidad de Medida');
+    if(falt.length){ ecStatus.textContent='Campos faltantes: '+falt.join(', '); return; }
+    ecSaveBtn.disabled=true; ecSaveBtn.querySelector('.spinner-border')?.classList.remove('d-none');
     try{
-      const res = await fetch(url, {
-        method: 'POST',
-        body: fd,
-        headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With':'XMLHttpRequest' },
-        credentials: 'same-origin'
-      });
-      const data = await res.json();
+      const res=await fetch(url,{method:'POST', body:fd, headers:{'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With':'XMLHttpRequest'}, credentials:'same-origin'});
+      const data=await res.json().catch(()=>null);
+      if(!res.ok || (data && data.success===false)){ ecStatus.textContent=(data && data.error)||'No se pudo actualizar'; return; }
 
-      if (res.ok) {
-        // Refrescar textos en la fila
-        const instSel = document.getElementById('ec-inst');
-        const metSel  = document.getElementById('ec-met');
-        const reacSel = document.getElementById('ec-reac');
-        const uniSel  = document.getElementById('ec-uni');
+      // Actualizar vista de la fila
+      const instSel=document.getElementById('ec-inst'), metSel=document.getElementById('ec-met'), reacSel=document.getElementById('ec-reac'), uniSel=document.getElementById('ec-uni');
+      currentRow.querySelector('.cell-instrumento')?.replaceChildren(document.createTextNode(instSel.options[instSel.selectedIndex]?.text||'-'));
+      currentRow.querySelector('.cell-metodo')?.replaceChildren(document.createTextNode(metSel.options[metSel.selectedIndex]?.text||'-'));
+      currentRow.querySelector('.cell-reactivo')?.replaceChildren(document.createTextNode(reacSel.options[reacSel.selectedIndex]?.text||'-'));
+      currentRow.querySelector('.cell-unidad')?.replaceChildren(document.createTextNode(uniSel.options[uniSel.selectedIndex]?.text||'-'));
 
-        currentRow.querySelector('.cell-instrumento').textContent = instSel.options[instSel.selectedIndex].text;
-        currentRow.querySelector('.cell-metodo').textContent      = metSel.options[metSel.selectedIndex].text;
-        currentRow.querySelector('.cell-reactivo').textContent    = reacSel.options[reacSel.selectedIndex].text;
-        currentRow.querySelector('.cell-unidad').textContent      = uniSel.options[uniSel.selectedIndex].text;
+      // Sincroniza data-* para próximos edits
+      currentRow.setAttribute('data-inst-id', instSel.value || '');
+      currentRow.setAttribute('data-met-id',  metSel.value  || '');
+      currentRow.setAttribute('data-reac-id', reacSel.value || '');
+      currentRow.setAttribute('data-uni-id',  uniSel.value  || '');
 
-        // Cerrar modal
-        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        bsModal.hide();
-        // Limpiar estado
-        status.textContent = '';
-      } else {
-        status.textContent = data.error || 'No se pudo actualizar la configuración';
-      }
-    } catch(err) {
-      status.textContent = 'Error de conexión';
-    } finally {
-      saveBtn.disabled = false;
-      saveBtn.querySelector('.spinner-border').classList.add('d-none');
-    }
+      editModal && editModal.hide(); ecStatus.textContent='';
+      window.showGlobalMessage && window.showGlobalMessage('success','Configuración actualizada');
+    }catch(e){ ecStatus.textContent='Error de conexión'; }
+    finally{ ecSaveBtn.disabled=false; ecSaveBtn.querySelector('.spinner-border')?.classList.add('d-none'); }
   });
-})();
-</script>
-<script>
-// CSRF helpers (Django)
-function getCookie(name) {
-  let v = null;
-  if (document.cookie && document.cookie !== '') {
-    const cs = document.cookie.split(';');
-    for (let i=0;i<cs.length;i++){
-      const c = cs[i].trim();
-      if (c.substring(0, name.length + 1) === (name + '=')) {
-        v = decodeURIComponent(c.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return v;
-}
-function getCSRFToken(){ return getCookie('csrftoken') || (document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''); }
 
-// Delegación de eventos para botones de edición en la tabla de configuradas
-document.addEventListener('click', async function(ev){
-  const btn = ev.target.closest('.btn-editar-config, .btn-guardar-config, .btn-cancelar-config');
-  if (!btn) return;
+  // Proponer (desde filas y desde modal)
+  const ppModalEl=document.getElementById('proposePropModal');
+  const ppModal = ppModalEl ? bootstrap.Modal.getOrCreateInstance(ppModalEl) : null;
+  const ppForm=document.getElementById('proposePropForm');
+  const ppStatus=document.getElementById('pp-status');
+  const ppWarn=document.getElementById('pp-warning');
+  const ppSendBtn=document.getElementById('pp-send-btn');
+  const proposeURL=document.getElementById('propose-url-anchor')?.getAttribute('data-propose-url') || '';
+  function setPpStatus(msg, tone){ ppStatus.className='small mt-1'; if(tone) ppStatus.classList.add('alert','alert-'+tone); ppStatus.textContent=msg||''; }
 
-  const row = btn.closest('.config-row');
-  if (!row) return;
-
-  const viewCells = row.querySelectorAll('.cell-view');
-  const editCell  = row.querySelector('.cell-edit');
-  const btnEditar  = row.querySelector('.btn-editar-config');
-  const btnGuardar = row.querySelector('.btn-guardar-config');
-  const btnCancelar= row.querySelector('.btn-cancelar-config');
-
-  // Entrar a modo edición
-  if (btn.classList.contains('btn-editar-config')) {
-    viewCells.forEach(c => c.classList.add('d-none'));
-    editCell.classList.remove('d-none');
-    btnEditar.classList.add('d-none');
-    btnGuardar.classList.remove('d-none');
-    btnCancelar.classList.remove('d-none');
-    return;
-  }
-
-  // Cancelar edición
-  if (btn.classList.contains('btn-cancelar-config')) {
-    editCell.classList.add('d-none');
-    viewCells.forEach(c => c.classList.remove('d-none'));
-    btnEditar.classList.remove('d-none');
-    btnGuardar.classList.add('d-none');
-    btnCancelar.classList.add('d-none');
-    return;
-  }
-
-  // Guardar cambios (AJAX)
-  if (btn.classList.contains('btn-guardar-config')) {
-    const selInst   = row.querySelector('.sel-instrumento');
-    const selMet    = row.querySelector('.sel-metodo');
-    const selReac   = row.querySelector('.sel-reactivo');
-    const selUnidad = row.querySelector('.sel-unidad');
-
-    // Validación rápida cliente
-    const faltantes = [];
-    if (!selInst.value)   faltantes.push('Instrumento');
-    if (!selMet.value)    faltantes.push('Método Analítico');
-    if (!selReac.value)   faltantes.push('Reactivo');
-    if (!selUnidad.value) faltantes.push('Unidad de Medida');
-    if (faltantes.length) {
-      window.showGlobalMessage && window.showGlobalMessage('warning', 'Campos faltantes: ' + faltantes.join(', '));
-      return;
-    }
-
-    // POST
-    const url = row.dataset.updateUrl;
-    const fd = new FormData();
-    fd.append('instrumento_id', selInst.value);
-    fd.append('metodo_analitico_id', selMet.value);
-    fd.append('reactivo_id', selReac.value);
-    fd.append('unidad_de_medida_id', selUnidad.value);
-
-    // Deshabilitar mientras guarda
-    btn.disabled = true;
-    try{
-      const res = await fetch(url, {
-        method: 'POST',
-        body: fd,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRFToken': getCSRFToken()
-        },
-        credentials: 'same-origin'
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        // Actualizar vista de texto con lo seleccionado
-        row.querySelector('.cell-instrumento').textContent = selInst.options[selInst.selectedIndex].text;
-        row.querySelector('.cell-metodo').textContent      = selMet.options[selMet.selectedIndex].text;
-        row.querySelector('.cell-reactivo').textContent    = selReac.options[selReac.selectedIndex].text;
-        row.querySelector('.cell-unidad').textContent      = selUnidad.options[selUnidad.selectedIndex].text;
-
-        // Salir de edición
-        editCell.classList.add('d-none');
-        viewCells.forEach(c => c.classList.remove('d-none'));
-        btnEditar.classList.remove('d-none');
-        btnGuardar.classList.add('d-none');
-        btnCancelar.classList.add('d-none');
-
-        window.showGlobalMessage && window.showGlobalMessage('success', data.message || 'Configuración actualizada');
-      } else {
-        window.showGlobalMessage && window.showGlobalMessage('danger', data.error || 'No se pudo actualizar la configuración');
-      }
-    } catch(e) {
-      window.showGlobalMessage && window.showGlobalMessage('danger', 'Error de conexión');
-    } finally {
-      btn.disabled = false;
-    }
-  }
-});
-</script>
-<script>
-(function(){
-  // Helpers CSRF (Django)
-  function getCookie(name) {
-    let v = null;
-    if (document.cookie && document.cookie !== '') {
-      const cs = document.cookie.split(';');
-      for (let i=0;i<cs.length;i++){
-        const c = cs[i].trim();
-        if (c.substring(0, name.length + 1) === (name + '=')) {
-          v = decodeURIComponent(c.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return v;
-  }
-  function getCSRFToken(){ return getCookie('csrftoken') || (document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''); }
-
-  // Referencias a modales y elementos
-  const editModalEl = document.getElementById('editConfigModal');
-  const editModal   = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
-  const ppModalEl   = document.getElementById('proposePropModal');
-  const ppModal     = ppModalEl ? bootstrap.Modal.getOrCreateInstance(ppModalEl) : null;
-  const ppForm      = document.getElementById('proposePropForm');
-  const ppStatus    = document.getElementById('pp-status');      // contenedor de mensajes
-  const ppWarning   = document.getElementById('pp-warning');     // aviso condicional
-  const ppSendBtn   = document.getElementById('pp-send-btn');
-  const urlAnchor   = document.getElementById('propose-url-anchor');
-  const proposeURL  = urlAnchor ? urlAnchor.getAttribute('data-propose-url') : null;
-
-  // Tabla de propuestas
-  const tbl   = document.getElementById('tabla-propuestas');
-  const tbody = document.getElementById('propuestas-body');
-  const empty = document.getElementById('sin-propuestas');
-
-  // Utilidad: mostrar estado con estilos de alerta
-  function setStatus(msg, tone){ // tone: 'danger'|'warning'|'success'|null
-    if (!ppStatus) return;
-    ppStatus.className = 'small mt-1';
-    if (tone) ppStatus.classList.add('alert', `alert-${tone}`);
-    ppStatus.textContent = msg || '';
-  }
-
-  // Añadir fila "Pendiente" sin recargar
-  function addProposalRow(tipo, valor, descripcion, statusText, id) {
-    if (empty) empty.style.display = 'none';
-    if (tbl)   tbl.style.display = '';
-    if (!tbody) return;
-    const tr = document.createElement('tr');
-    const tdTipo = document.createElement('td');    tdTipo.textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1);
-    const tdVal  = document.createElement('td');    tdVal.textContent  = valor;
-    const tdDesc = document.createElement('td');    tdDesc.textContent = descripcion || '-';
-    const tdSt   = document.createElement('td');    tdSt.textContent   = statusText || 'Pendiente';
-    tr.append(tdTipo, tdVal, tdDesc, tdSt);
-    tr.dataset.propuestaId = String(id || '');
-    tbody.prepend(tr);
-  }
-
-  // Abrir modal de propuesta desde cualquier botón .btn-proponer
   document.addEventListener('click', function(e){
-    const btn = e.target.closest('.btn-proponer');
-    if (!btn) return;
-
-    const tipo = btn.getAttribute('data-prop-tipo'); // instrumento|metodo|reactivo|unidad
+    const btn=e.target.closest('.btn-proponer'); if(!btn) return;
+    const tipo = btn.getAttribute('data-prop-tipo');
     document.getElementById('pp-tipo').value = tipo;
     document.getElementById('pp-target').value = btn.getAttribute('data-target-select') || '';
-    document.getElementById('pp-tipo-label').textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1);
-
-    // Mostrar aviso SOLO si está abierto el modal de edición (propuesta desde edición)
-    const openedFromEdit = !!(editModalEl && editModalEl.classList.contains('show'));
-    if (ppWarning) ppWarning.classList.toggle('d-none', !openedFromEdit);
-
-    ppForm.reset();
-    setStatus('', null);
+    document.getElementById('pp-tipo-label').textContent = (tipo||'').charAt(0).toUpperCase()+(tipo||'').slice(1);
+    const openedFromEdit = editModalEl && editModalEl.classList.contains('show');
+    if (ppWarn) ppWarn.classList.toggle('d-none', !openedFromEdit);
+    ppForm.reset(); setPpStatus('', null);
     ppModal && ppModal.show();
   });
 
-  // Enviar propuesta por AJAX
-  ppSendBtn?.addEventListener('click', async function(){
-    if (!proposeURL) {
-      setStatus('No se encontró la URL de propuestas.', 'danger');
-      return;
-    }
-    const fd = new FormData(ppForm);
-    const tipo = (fd.get('tipo') || '').toString();
-    const valor = (fd.get('valor') || '').toString().trim();
-    const descripcion = (fd.get('descripcion') || '').toString().trim();
-    if (!valor) {
-      setStatus('El valor es obligatorio.', 'warning');
-      return;
-    }
+  ppSendBtn?.addEventListener('click', async ()=>{
+    if (!proposeURL){ setPpStatus('URL de propuesta no disponible.', 'danger'); return; }
+    const fd=new FormData(ppForm);
+    const valor=(fd.get('valor')||'').toString().trim(); if(!valor){ setPpStatus('El valor es obligatorio.', 'warning'); return; }
+    ppSendBtn.disabled=true; setPpStatus('Enviando...', null);
+    try{
+      const res=await fetch(proposeURL,{method:'POST', body:fd, headers:{'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With':'XMLHttpRequest'}, credentials:'same-origin'});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok || !data.ok){ setPpStatus(data.error||'No se pudo registrar la propuesta.', 'danger'); ppSendBtn.disabled=false; return; }
+      ppModal && ppModal.hide(); if (editModalEl && editModalEl.classList.contains('show') && editModal) editModal.hide();
 
-    ppSendBtn.disabled = true;
-    setStatus('Enviando...', null);
-    try {
-      const res = await fetch(proposeURL, {
-        method: 'POST',
-        body: fd,
-        headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
-        credentials: 'same-origin'
-      });
-      const data = await res.json().catch(()=> ({}));
-      if (!res.ok || !data.ok) {
-        setStatus((data && data.error) ? data.error : 'No se pudo registrar la propuesta.', 'danger');
-        ppSendBtn.disabled = false;
-        return;
+      // Inyecta en tabla "Propuestas"
+      const tbl=document.getElementById('tabla-propuestas'); const tbody=document.getElementById('propuestas-body'); const empty=document.getElementById('sin-propuestas');
+      if (empty) empty.style.display='none'; if (tbl) tbl.style.display='';
+      if (tbody){
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${(fd.get('tipo')||'').toString().charAt(0).toUpperCase() + (fd.get('tipo')||'').toString().slice(1)}</td>
+                        <td>${valor}</td>
+                        <td>${(fd.get('descripcion')||'-').toString()||'-'}</td>
+                        <td>Pendiente</td>`;
+        tbody.prepend(tr);
       }
-
-      // Cerrar modal de propuesta
-      ppModal && ppModal.hide();
-      // Si la propuesta salió desde edición, cerrar el modal de edición también
-      if (editModalEl && editModalEl.classList.contains('show') && editModal) {
-        editModal.hide();
-      }
-
-      // Reflejar en la tabla de "Propuestas"
-      addProposalRow(tipo, valor, descripcion, 'Pendiente', data.id);
-
-      // Aviso no intrusivo global
-      window.showGlobalMessage && window.showGlobalMessage('success', 'Propuesta registrada correctamente');
-    } catch (err) {
-      setStatus('Error de conexión.', 'danger');
-    } finally {
-      ppSendBtn.disabled = false;
-    }
+      window.showGlobalMessage && window.showGlobalMessage('success','Propuesta registrada correctamente');
+    }catch(e){ setPpStatus('Error de conexión.', 'danger'); }
+    finally{ ppSendBtn.disabled=false; }
   });
+
+  // Refresco de catálogos (opcional)
+  window.addEventListener('catalogs:update', function(ev){
+    const det = ev.detail || {};
+    const apply = (name, items)=>{
+      document.querySelectorAll(`select[name="${name}"]`).forEach(sel=>{
+        const cur = sel.value;
+        sel.innerHTML = `<option value="">Seleccionar</option>` + (items||[]).map(o=>`<option value="${o.id}">${o.nombre}</option>`).join('');
+        if (cur && Array.from(sel.options).some(op=>op.value===cur)) sel.value = cur;
+      });
+    };
+    if (det.instrumentos) apply('instrumento_id', det.instrumentos);
+    if (det.metodos) apply('metodo_analitico_id', det.metodos);
+    if (det.reactivos) apply('reactivo_id', det.reactivos);
+    if (det.unidades) apply('unidad_de_medida_id', det.unidades);
+  });
+
+  // Integración con staff: evento público y función global (no rompen si no se usan)
+  window.addEventListener('lab:estado-updated', function(ev){
+    const det = ev.detail || {};
+    applyEditPermission(!!det.allow_edit_now);
+  });
+  window.labUpdateEditWindow = function(detail){
+    try{
+      const allow = !!(detail && detail.allow_edit_now);
+      applyEditPermission(allow);
+      window.showGlobalMessage && window.showGlobalMessage('success', allow ? 'Edición reabierta.' : 'Edición cerrada.');
+    }catch(e){}
+  };
+
+  // Opcional: refrescar a medianoche local para reflejar cambio natural de día (si no se usa backend push)
+  (function scheduleMidnightReload(){
+    try{
+      const now = new Date();
+      const midnight = new Date(now); midnight.setHours(24,0,0,0);
+      const ms = midnight - now;
+      if (ms > 0 && ms < 86400000){ setTimeout(()=>{ location.reload(); }, ms + 1000); }
+    }catch(e){}
+  })();
 })();
 </script>

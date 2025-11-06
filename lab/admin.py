@@ -3,6 +3,9 @@ from django.apps import apps
 from django.db import transaction
 from .models import PropiedadARevisar
 from .utils.propuestas import materializar_propuesta
+from lab.models import Laboratorio
+from django.utils import timezone
+from lab.utils.estados import filled_all_month
 
 # Import only what we need for the custom logic
 from .models import Laboratorio, ProgramaLaboratorio, Prueba, LaboratorioPruebaConfig, Reporte
@@ -102,11 +105,32 @@ class ProgramaLaboratorioAdmin(admin.ModelAdmin):
 # ------------ 3) Custom admin for Laboratorio to manage override flags for editing the configurations ------------
 @admin.register(Laboratorio)
 class LaboratorioAdmin(admin.ModelAdmin):
-    list_display = ("id", "nombre", "clave", "estado", "edicion_hasta_dia", "corte_captura_dia", "override_edicion_activa", "override_edicion_hasta", "override_captura_activa", "override_captura_hasta")
+    list_display = ("id", "nombre", "clave", "estado", "edicion_hasta_dia", "corte_captura_dia",
+                    "override_edicion_activa", "override_edicion_hasta",
+                    "override_captura_activa", "override_captura_hasta")
     list_editable = ("estado",)
     list_filter = ("estado", "override_edicion_activa", "override_captura_activa")
     search_fields = ("nombre", "clave")
-    fields = ("nombre", "clave", "estado", "edicion_hasta_dia", "corte_captura_dia", "override_edicion_activa", "override_edicion_hasta", "override_captura_activa", "override_captura_hasta")
+    fields = ("nombre", "clave", "estado", "edicion_hasta_dia", "corte_captura_dia",
+              "override_edicion_activa", "override_edicion_hasta",
+              "override_captura_activa", "override_captura_hasta")
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # Si se desactiva override de captura, NO promover antes del corte
+        if change and form and ('override_captura_activa' in form.changed_data) and obj.estado == 2:
+            hoy = timezone.localdate()
+            corte = getattr(obj, 'corte_captura_dia', 25) or 25
+            cap_override_vigente = (
+                getattr(obj, 'override_captura_activa', False)
+                and (obj.override_captura_hasta is None or hoy <= obj.override_captura_hasta)
+            )
+            cap_window_open = cap_override_vigente or (hoy.day <= corte)
+            if not cap_window_open:
+                mes_vigente = hoy.replace(day=1)
+                if filled_all_month(obj, mes_vigente):
+                    obj.estado = 3
+                    obj.save(update_fields=['estado'])
 
 
 @admin.register(LaboratorioPruebaConfig)
@@ -165,3 +189,8 @@ class ReporteAdmin(admin.ModelAdmin):
     list_filter = ('laboratorio', 'tipo', 'estado', 'mes')
     search_fields = ('nombre',)
     filter_horizontal = ('programas', 'pruebas')
+
+# Branding del panel de administración
+admin.site.site_header = "EvaluaT"
+admin.site.site_title = "EvaluaT"
+admin.site.index_title = "Panel de administración"

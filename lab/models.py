@@ -3,7 +3,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import date
 from django.db.models import Q
-
+import secrets
 # ----------- Helpers -----------
 # Helper para fecha por defecto
 def first_day_of_current_month():
@@ -90,7 +90,6 @@ class UnidadDeMedida(models.Model):
     class Meta:
         verbose_name_plural = "UnidadDeMedida"
 
-from django.db import models
 
 class PropiedadARevisar(models.Model):
     TIPO_ELEMENTO_CHOICES = (
@@ -99,7 +98,6 @@ class PropiedadARevisar(models.Model):
         ("reactivo", "Reactivo"),
         ("unidad", "Unidad"),
     )
-
     STATUS_CHOICES = (
         (0, "Pendiente"),
         (1, "Aprobado"),
@@ -110,17 +108,34 @@ class PropiedadARevisar(models.Model):
     valor = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True)
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    propuesto_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='propuestas',
+        null=True,
+        blank=True,
+    )
+    moderation_nonce = models.CharField(max_length=64, blank=True, null=True)
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='propuestas_resueltas')
+    resolved_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.get_tipoElemento_display()} - {self.valor} ({self.get_status_display()})"
+    def ensure_nonce(self, force=False):
+        if force or not self.moderation_nonce:
+            self.moderation_nonce = secrets.token_urlsafe(24)
 
     class Meta:
         verbose_name_plural = "Propiedades a Revisar"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['propuesto_por']),
+        ]
 
+    def __str__(self):
+        return f"{self.get_tipoElemento_display()} - {self.valor} ({self.get_status_display()})"
 
 class Prueba(models.Model):
     programa_id = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='pruebas')

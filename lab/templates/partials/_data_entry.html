@@ -35,16 +35,21 @@
                   {% for row in grp.filas %}
                     {% with p=row.prueba dato=datos_por_prueba|get_item:row.prueba.id %}
                     <div class="col-12">
-                      <div class="row g-2 align-items-center fila-prueba" data-prueba-id="{{ p.id }}" data-prueba-name="{{ p.nombre }}">
+                      <div class="row g-2 align-items-center fila-prueba"
+                          data-prueba-id="{{ p.id }}" data-prueba-name="{{ p.nombre }}">
                         <div class="col-12 col-md-4">
                           <label for="valor_{{ p.id }}" class="col-form-label fw-semibold">{{ p.nombre }}</label>
                         </div>
                         <div class="col-12 col-md-6">
-                          {% if dato %}
-                            <input class="form-control form-control-sm valor-input" id="valor_{{ p.id }}" name="valor_{{ p.id }}" type="text" value="{{ dato.valor }}" disabled>
-                          {% else %}
-                            <input class="form-control form-control-sm valor-input" id="valor_{{ p.id }}" name="valor_{{ p.id }}" type="text" inputmode="decimal" placeholder="0.0">
-                          {% endif %}
+                          <input type="number"
+                                id="valor_{{ p.id }}"
+                                step="any"
+                                inputmode="decimal"
+                                pattern="[0-9.,eE+-]+"
+                                class="form-control form-control-sm valor-input"
+                                name="valor_{{ p.id }}"
+                                value="{{ dato.valor|default:'' }}"
+                                {% if captura_bloqueada %}disabled{% endif %}>
                         </div>
                         <div class="col-12 col-md-2 text-muted">
                           <span class="small">{{ row.unidad|default:"" }}</span>
@@ -53,6 +58,7 @@
                     </div>
                     {% endwith %}
                   {% endfor %}
+
                 </div>
               </div>
             </div>
@@ -104,140 +110,181 @@
 
 <script>
 (function(){
-function getCookie(name){const m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return m?m.pop():''}
-
-// Modal helpers (simple)
-const modalColors = {
-  error:   { topbar: "#dc3545", title: "Error" },
-  success: { topbar: "#198754", title: "Éxito" },
-  warn:    { topbar: "#ffc107", title: "Advertencia" },
-};
-function setModalStyle(type) {
-  const c = modalColors[type] || modalColors.success;
-  document.getElementById('modal-topbar').style.background = c.topbar;
-  document.getElementById('modal-title').innerText = c.title;
-}
-function openModal(type, html){
-  setModalStyle(type);
-  document.getElementById('modal-body').innerHTML = html;
-  document.getElementById('modal').classList.remove('d-none');
-  document.body.style.overflow = 'hidden';
-}
-function closeModal(){
-  document.getElementById('modal').classList.add('d-none');
-  document.getElementById('modal-body').innerHTML = '';
-  document.body.style.overflow = '';
-}
-document.getElementById('modal-close').addEventListener('click', closeModal);
-document.getElementById('modal').addEventListener('click', function(e){ if(e.target.id==='modal') closeModal(); });
-
-// Validación numérica
-const allowedPattern = /^[0-9eE+\-.,]*$/;
-function isNumericLike(s){
-  if(typeof s !== 'string') return false;
-  const t = s.trim();
-  if(!t) return false;
-  return /^[+-]?(?:\d+(?:[.,]\d*)?|\d*[.,]\d+)(?:[eE][+-]?\d+)?$/.test(t);
-}
-function getEnabledInputs(){ return Array.from(document.querySelectorAll('.valor-input:not([disabled])')); }
-function firstPendingIndex(enabled){ for (let i=0;i<enabled.length;i++){ if(enabled[i].value.trim()==='') return i; } return 0; }
-
-// Pegar columna (múltiples acordeones abiertos; estado inicial extendido)
-document.getElementById('btn-pegar-columna').addEventListener('click', async ()=>{
-  let text = '';
-  try{
-    if (navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText();
-  }catch(e){}
-  if (!text) { openModal('warn','No se pudo leer del portapapeles. Pega con Ctrl+V en el primer campo o selecciona un input.'); return; }
-  const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-  if (!lines.length){ openModal('warn','No hay números en el portapapeles.'); return; }
-
-  const enabled = getEnabledInputs();
-  if (!enabled.length){ openModal('warn','No hay campos disponibles para pegar.'); return; }
-
-  const active = document.activeElement && document.activeElement.classList.contains('valor-input') && !document.activeElement.disabled
-    ? enabled.indexOf(document.activeElement) : -1;
-  let start = active >= 0 ? active : firstPendingIndex(enabled);
-
-  enabled.forEach(el=>{ el.classList.remove('input-bad','input-warn'); });
-
-  let j = 0;
-  for (let i=start; i<enabled.length && j<lines.length; i++){
-    const v = lines[j];
-    if (!isNumericLike(v)){
-      if (enabled[i].value.trim()===''){ enabled[i].classList.add('input-bad'); }
-      j++; i--; continue;
-    }
-    if (enabled[i].value.trim()===''){ enabled[i].value = String(v).replace(',', '.'); }
-    j++;
+  function getCookie(name){
+    const m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return m?m.pop():'';
   }
-  for (let k=start; k<enabled.length; k++){ if (enabled[k].value.trim()==='') enabled[k].classList.add('input-warn'); }
-  openModal('success','Valores pegados en los campos disponibles.');
-});
 
-// Validación “shake” al tipear
-document.addEventListener('beforeinput', (e)=>{
-  const inp = e.target;
-  if (!inp.classList || !inp.classList.contains('valor-input') || inp.disabled) return;
-  if (e.data && !allowedPattern.test(e.data)){
+  // Modal helpers
+  const modalColors = {
+    error:   { topbar: "#dc3545", title: "Error" },
+    success: { topbar: "#198754", title: "Éxito" },
+    warn:    { topbar: "#ffc107", title: "Advertencia" },
+  };
+  function setModalStyle(type){
+    const c = modalColors[type] || modalColors.success;
+    const tb = document.getElementById('modal-topbar');
+    const tt = document.getElementById('modal-title');
+    if (tb) tb.style.background = c.topbar;
+    if (tt) tt.innerText = c.title;
+  }
+  function openModal(type, html){
+    setModalStyle(type);
+    const body = document.getElementById('modal-body');
+    const modal = document.getElementById('modal');
+    if (body) body.innerHTML = html;
+    if (modal) modal.classList.remove('d-none');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(){
+    const modal = document.getElementById('modal');
+    const body  = document.getElementById('modal-body');
+    if (modal) modal.classList.add('d-none');
+    if (body) body.innerHTML = '';
+    document.body.style.overflow = '';
+  }
+  const btnClose = document.getElementById('modal-close');
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+  const modalEl = document.getElementById('modal');
+  if (modalEl) modalEl.addEventListener('click', function(e){ if(e.target.id==='modal') closeModal(); });
+
+  // Validación numérica
+  const allowedPattern = /^[0-9eE+\-.,]*$/;
+  function isNumericLike(s){
+    if (typeof s !== 'string') return false;
+    const t = s.trim(); if (!t) return false;
+    return /^[+-]?(?:\\d+(?:[.,]\\d*)?|\\d*[.,]\\d+)(?:[eE][+-]?\\d+)?$/.test(t);
+  }
+  function getEnabledInputs(){
+    return Array.from(document.querySelectorAll('.valor-input:not([disabled])'));
+  }
+  function firstPendingIndex(enabled){
+    for (let i=0;i<enabled.length;i++){ if (enabled[i].value.trim()==='') return i; }
+    return 0;
+  }
+
+  // Pegar columna
+  const pasteBtn = document.getElementById('btn-pegar-columna');
+  if (pasteBtn) pasteBtn.addEventListener('click', async ()=>{
+    let text = '';
+    try { if (navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText(); } catch(e){}
+    if (!text) { openModal('warn','No se pudo leer del portapapeles. Pega con Ctrl+V en el primer campo o selecciona un input.'); return; }
+
+    const lines = text.split(/\\r?\\n/).map(s=>s.trim()).filter(Boolean);
+    if (!lines.length){ openModal('warn','No hay números en el portapapeles.'); return; }
+
+    const enabled = getEnabledInputs();
+    if (!enabled.length){ openModal('warn','No hay campos disponibles para pegar.'); return; }
+
+    const active = document.activeElement && document.activeElement.classList.contains('valor-input') && !document.activeElement.disabled
+      ? enabled.indexOf(document.activeElement) : -1;
+    let start = active >= 0 ? active : firstPendingIndex(enabled);
+
+    enabled.forEach(el=>{ el.classList.remove('input-bad','input-warn'); });
+
+    let j = 0;
+    for (let i=start; i<enabled.length && j<lines.length; i++){
+      const v = lines[j];
+      if (!isNumericLike(v)){
+        if (enabled[i].value.trim()===''){ enabled[i].classList.add('input-bad'); }
+        j++; i--; continue;
+      }
+      if (enabled[i].value.trim()===''){ enabled[i].value = String(v).replace(',', '.'); }
+      j++;
+    }
+    for (let k=start; k<enabled.length; k++){ if (enabled[k].value.trim()==='') enabled[k].classList.add('input-warn'); }
+    openModal('success','Valores pegados en los campos disponibles.');
+  });
+
+  // Validación “shake” al tipear
+  document.addEventListener('beforeinput', (e)=>{
+    const inp = e.target;
+    if (!inp.classList || !inp.classList.contains('valor-input') || inp.disabled) return;
+    if (e.data && !allowedPattern.test(e.data)){
+      e.preventDefault();
+      inp.classList.remove('input-invalid'); void inp.offsetWidth; inp.classList.add('input-invalid');
+    }
+  });
+
+  // Guardado
+  const form = document.getElementById('data-entry-form') || document.getElementById('form-datos') || null;
+  if (!form) return;
+
+  form.addEventListener('submit', async (e)=>{
     e.preventDefault();
-    inp.classList.remove('input-invalid'); void inp.offsetWidth; inp.classList.add('input-invalid');
-  }
-});
 
-// Guardado
-const form = document.getElementById('data-entry-form');
-if(!form) return;
-form.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const fd = new FormData(form);
-  for (const [k,v] of Array.from(fd.entries())) { if(k.startsWith('valor_') && (v===null || String(v).trim()==='')) fd.delete(k); }
-  if (![...fd.keys()].some(k=>k.startsWith('valor_'))) { openModal('warn','No hay datos para guardar.'); return; }
-
-  const nameById = {};
-  document.querySelectorAll('.fila-prueba').forEach(r=>{ nameById[r.dataset.pruebaId] = r.dataset.pruebaName; });
-
-  try{
-    const resp = await fetch(form.getAttribute('action'), { method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}, credentials:'same-origin', body: fd });
-    const ct = resp.headers.get('content-type') || '';
-    if (!ct.includes('application/json')) { const txt = await resp.text(); openModal('error','La respuesta del servidor no es válida.<br><pre class="mb-0 small text-muted">'+txt.substring(0,300)+'</pre>'); return; }
-    const data = await resp.json();
-
-    const savedCount = typeof data.saved === 'number' ? data.saved : Array.isArray(data.saved) ? data.saved.length : 0;
-    const savedList  = Array.isArray(data.saved_list) ? data.saved_list : (Array.isArray(data.saved) ? data.saved : []);
-    const skipped    = Array.isArray(data.skipped_existing) ? data.skipped_existing : [];
-
-    // Deshabilitar inputs guardados nuevos
-    savedList.forEach(it=>{
-      const el = document.getElementById('valor_' + it.prueba_id);
-      if (el){ el.value = it.valor; el.setAttribute('disabled',''); el.classList.remove('input-warn','input-bad'); }
-    });
-    // Deshabilitar inputs omitidos (ya existían)
-    skipped.forEach(it=>{
-      const el = document.getElementById('valor_' + it.prueba_id);
-      if (el){ el.setAttribute('disabled',''); el.classList.remove('input-warn','input-bad'); }
-    });
-
-    const hasErrors = data.errors && Object.keys(data.errors).length > 0;
-    if (hasErrors && !savedCount && !skipped.length){
-      const errSummary = Object.entries(data.errors).map(([k,v])=>`• ${k}: ${v}`).join('<br>');
-      openModal('error','No se pudieron guardar algunos valores.<br>'+(errSummary||'')); return;
+    const fd = new FormData(form);
+    // Limpiar vacíos antes de enviar
+    for (const [k,v] of Array.from(fd.entries())){
+      if (k.startsWith('valor_') && (v===null || String(v).trim()==='')) fd.delete(k);
     }
-    if (skipped.length){
-      const lista = skipped.map(s=> '<li>'+(nameById[String(s.prueba_id)] || ('Prueba '+s.prueba_id))+'</li>').join('');
-      const prefijo = savedCount ? `<p>Se guardaron <b>${savedCount}</b> dato(s) nuevo(s).</p>` : '';
-      openModal('warn', prefijo + `Los datos de las siguientes pruebas ya se guardaron anteriormente:<ul class="mb-0 mt-2">${lista}</ul>`);
-    } else if (savedCount) {
-      openModal('success', `¡${savedCount} dato(s) guardado(s) correctamente!`);
-    } else {
-      openModal('warn', 'No se realizó ningún guardado nuevo.');
+    if (![...fd.keys()].some(k=>k.startsWith('valor_'))){
+      openModal('warn','No hay datos para guardar.');
+      return;
     }
 
-    // Redirección si la captura quedó cerrada (estado 2→3)
-    if (data.closed) { window.location.href = "{% url 'lab:labmainview' %}"; }
-  }catch(err){
-    openModal('error','Error de conexión con el servidor. Verifique su red.<br><pre class="mb-0 small text-danger">'+String(err).substring(0,150)+'</pre>');
-  }
-});
+    // Diccionario prueba_id -> nombre (para modales)
+    const nameById = {};
+    document.querySelectorAll('.fila-prueba').forEach(r=>{
+      nameById[r.dataset.pruebaId] = r.dataset.pruebaName;
+    });
+
+    try{
+      const resp = await fetch(form.getAttribute('action'), {
+        method:'POST',
+        headers:{'X-CSRFToken': getCookie('csrftoken')},
+        credentials:'same-origin',
+        body: fd
+      });
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.includes('application/json')){
+        const txt = await resp.text();
+        openModal('error','La respuesta del servidor no es válida.<br><pre class="mb-0 small text-muted">'+txt.substring(0,300)+'</pre>');
+        return;
+      }
+      const data = await resp.json();
+
+      const savedCount = typeof data.saved === 'number' ? data.saved : Array.isArray(data.saved) ? data.saved.length : 0;
+      const savedList  = Array.isArray(data.saved_list) ? data.saved_list : (Array.isArray(data.saved) ? data.saved : []);
+      const skipped    = Array.isArray(data.skipped_existing) ? data.skipped_existing : [];
+
+      // Actualizar valores en UI
+      savedList.forEach(it=>{
+        const el = document.querySelector(`input[name="valor_${it.prueba_id}"]`);
+        if (el){ el.value = it.valor; el.classList.remove('input-warn','input-bad'); }
+      });
+      // Quitar marcas en los omitidos
+      skipped.forEach(it=>{
+        const el = document.querySelector(`input[name="valor_${it.prueba_id}"]`);
+        if (el){ el.classList.remove('input-warn','input-bad'); }
+      });
+
+      // Mensajes
+      const hasErrors = data.errors && Object.keys(data.errors).length > 0;
+      if (hasErrors && !savedCount && !skipped.length){
+        const errSummary = Object.entries(data.errors).map(([k,v])=>`• ${k}: ${v}`).join('<br>');
+        openModal('error','No se pudieron guardar algunos valores.<br>'+(errSummary||''));
+        return;
+      }
+      if (skipped.length){
+        const lista = skipped.map(s=> '<li>'+(nameById[String(s.prueba_id)] || ('Prueba '+s.prueba_id))+'</li>').join('');
+        const prefijo = savedCount ? `<p>Se guardaron <b>${savedCount}</b> dato(s).</p>` : '';
+        openModal('warn', prefijo + `Los datos de las siguientes pruebas no cambiaron:<ul class="mb-0 mt-2">${lista}</ul>`);
+      } else if (savedCount) {
+        openModal('success', `¡${savedCount} dato(s) guardado(s) correctamente!`);
+      } else {
+        openModal('warn', 'No se realizó ningún guardado nuevo.');
+      }
+
+      // Bloqueo solo si el servidor indica cierre de ventana
+      if (data.closed){
+        document.querySelectorAll('.valor-input').forEach(el => el.setAttribute('disabled',''));
+        // Opcional: refrescar para ver el estado de consulta
+        window.location.href = "{% url 'lab:labmainview' %}";
+      }
+    }catch(err){
+      openModal('error','Error de conexión con el servidor. Verifique su red.<br><pre class="mb-0 small text-danger">'+String(err).substring(0,150)+'</pre>');
+    }
+  });
 })();
 </script>
+

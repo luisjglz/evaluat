@@ -18,5 +18,11 @@ urlpatterns = [
     path('propose-property/', views.propose_property, name='propose_property'),  # propuestas desde modal
     path('lab/report-upload/', views.ReportUploadView.as_view(), name='lab_report_upload'),
     path('lab/report-list/', views.ReportListView.as_view(), name='lab_report_list'),
+    path('proposals/accept/', views.proposal_accept, name='proposal_accept'),
+    path('propuestas/mias/', views.MisPropuestasListView.as_view(), name='mis_propuestas'),
+    path('proposals/reject/', views.proposal_reject, name='proposal_reject'),
+    path("lab/reports/", views.ReportesView.as_view(), name="reports"),
+    path("config/bulk-save/", views.bulk_save_configs, name="bulk_save_configs"),
+    path('lab/staff/toggle-edit/', views.staff_toggle_edit_window, name='staff_toggle_edit'),
     # path('propose-property/', views.propose_property, name='propose_property'),
 ]
