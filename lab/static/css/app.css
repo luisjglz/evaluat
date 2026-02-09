@@ -1911,6 +1911,15 @@ label{
 .pointer-events-none{
   pointer-events: none;
 }
+/* OUR STYLES */
+/* .collapse.show{
+  visibility: visible;
+} */
+#accordionCaptura .accordion-collapse.collapse:not(.show):not(.collapsing) { visibility: hidden; }
+#accordionCaptura .accordion-collapse.collapse.show { visibility: visible; }
+#accordionCaptura .accordion-collapse.collapsing { visibility: visible; }
+
+/* END OF OUR STYLES */
 .collapse{
   visibility: collapse;
 }
@@ -8980,7 +8989,3 @@ th.fc-day-header {
   }
 }
 
-/* OUR STYLES */
-.collapse.show{
-  visibility: visible;
-}

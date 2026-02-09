@@ -1,3 +1,7 @@
 db.sqlite3
 .env
 .env.*
+.venv/
+evaluat/__pycache__/
+lab/__pycache__/
+*.pyc
